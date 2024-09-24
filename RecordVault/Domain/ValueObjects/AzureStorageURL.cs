@@ -37,5 +37,12 @@ namespace RecordVault.Domain.ValueObjects
         {
             return $"{BlobFolder}{BlobName}";
         }
+
+        public string GetBlobParentFolderName()
+        {
+            var folders = BlobFolder.Split("/");
+            var parentName = folders.Length > 1 ? folders[folders.Length - 1] : folders[0];
+            return parentName;
+        }
     }
 }

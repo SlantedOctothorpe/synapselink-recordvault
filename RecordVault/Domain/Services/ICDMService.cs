@@ -8,8 +8,8 @@ using System.Threading.Tasks;
 
 namespace RecordVault.Domain.Services
 {
-    public interface IAzureStorageAccountPersistence
+    public interface ICDMService
     {
-        public Task<StreamReader> GetStreamReaderFromURL(AzureStorageURL storageURL);
+        public SqlCdmTable GetCDMEntityFromStorageAccountURL(AzureStorageURL storageURL);
     }
 }

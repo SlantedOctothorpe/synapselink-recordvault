@@ -8,5 +8,6 @@ namespace RecordVault.Domain.Services
 {
     public interface ICSVProcessingService
     {
+        public void CSVStreamReaderToSQL(StreamReader streamReader, string tableName, string connectionString = "", string sqlType = "");
     }
 }
