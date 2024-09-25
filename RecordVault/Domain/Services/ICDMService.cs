@@ -1,4 +1,6 @@
-﻿using RecordVault.Domain.ValueObjects;
+﻿using CDMUtil.Context.ObjectDefinitions;
+
+using RecordVault.Domain.ValueObjects;
 
 using System;
 using System.Collections.Generic;
@@ -11,5 +13,10 @@ namespace RecordVault.Domain.Services
     public interface ICDMService
     {
         public SqlCdmTable GetCDMEntityFromStorageAccountURL(AzureStorageURL storageURL);
+
+        public List<string> GetCDMEntityList (string manifestURL = "");
+
+        // TODO remove this and replace with own return type
+        public Task<List<SQLMetadata>> GetCDMEntityMetadataList (string manifestURL = "");
     }
 }

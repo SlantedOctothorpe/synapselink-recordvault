@@ -31,6 +31,7 @@ namespace RecordVault.Functions
                 var requestBody = await new StreamReader(req.Body).ReadToEndAsync();
                 _logger.LogInformation(requestBody);
 
+                // TODO change DTO to have entity name and file URL list
                 var requestData = JsonSerializer.Deserialize<SyncCSVByURLDTO>(requestBody);
                 if (requestData == null)
                 {
@@ -45,7 +46,7 @@ namespace RecordVault.Functions
 
                 return new OkObjectResult("Successfully processed request");
             }
-            catch (System.Exception ex)
+            catch (Exception ex)
             {
                 _logger.LogError(ex.ToString());
 

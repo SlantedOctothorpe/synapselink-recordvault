@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.8.34330.188
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RecordVault", "RecordVault\RecordVault.csproj", "{63D1242D-C6D0-42E2-89BF-9AEC792DD0EC}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "RecordVault", "RecordVault\RecordVault.csproj", "{63D1242D-C6D0-42E2-89BF-9AEC792DD0EC}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CDMUtil", "CDMUtil\CDMUtil.csproj", "{C4476591-CC3A-4B93-A9D9-359D39B27B70}"
 EndProject
