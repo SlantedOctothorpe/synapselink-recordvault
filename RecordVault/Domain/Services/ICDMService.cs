@@ -1,6 +1,4 @@
-﻿using CDMUtil.Context.ObjectDefinitions;
-
-using RecordVault.Domain.ValueObjects;
+﻿using RecordVault.Domain.ValueObjects;
 
 using System;
 using System.Collections.Generic;
@@ -17,6 +15,6 @@ namespace RecordVault.Domain.Services
         public List<string> GetCDMEntityList (string manifestURL = "");
 
         // TODO remove this and replace with own return type
-        public Task<List<SQLMetadata>> GetCDMEntityMetadataList (string manifestURL = "");
+        public Task GetCDMEntityMetadataList (string manifestURL = "");
     }
 }

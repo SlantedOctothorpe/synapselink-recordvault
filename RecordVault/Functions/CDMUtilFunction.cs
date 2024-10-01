@@ -23,7 +23,7 @@ namespace RecordVault.Functions
         {
             // TODO This is a test function, remove this later
 
-            var metadataList = await _cdmService.GetCDMEntityMetadataList();
+            await _cdmService.GetCDMEntityMetadataList();
 
             return new OkObjectResult("Welcome to Azure Functions!");
         }

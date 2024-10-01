@@ -22,7 +22,7 @@ var host = new HostBuilder()
 
         services.AddTransient<IAzureStorageAccountPersistence, AzureStorageAccountPersistence>();
         services.AddTransient<ICSVProcessingService, SylvanCSVService>();
-        services.AddTransient<ICDMService, CDMUtilService>();
+        services.AddTransient<ICDMService, CDMService>();
 
         services.AddTransient<IDataSyncService, DataSyncService>();
     })
