@@ -23,7 +23,9 @@ namespace RecordVault.Functions
         {
             // TODO This is a test function, remove this later
 
-            await _cdmService.GetCDMEntityMetadataList();
+            var url = Environment.GetEnvironmentVariable("CDMManifestURL");
+
+            await _cdmService.GetCDMEntityMetadataList(url);
 
             return new OkObjectResult("Welcome to Azure Functions!");
         }

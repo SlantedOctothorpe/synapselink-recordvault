@@ -1,6 +1,4 @@
-﻿using Microsoft.IdentityModel.Tokens;
-
-using RecordVault.Domain.Persistence;
+﻿using RecordVault.Domain.Persistence;
 using RecordVault.Infrastructure.Persistence;
 
 using System;
@@ -24,12 +22,12 @@ namespace RecordVault.Application.Factories
         {
             var sqlType = sqlTypeParam;
 
-            if (sqlType.IsNullOrEmpty())
+            if (string.IsNullOrEmpty(sqlType))
             {
                 sqlType = Environment.GetEnvironmentVariable("RecodVaultDBType") ?? "";
             }
 
-            if (sqlType.IsNullOrEmpty())
+            if (string.IsNullOrEmpty(sqlType))
             {
                 throw new ArgumentException("SQL Type not provided");
             }
