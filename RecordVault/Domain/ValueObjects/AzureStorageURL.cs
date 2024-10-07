@@ -44,5 +44,12 @@ namespace RecordVault.Domain.ValueObjects
             var parentName = folders.Length > 1 ? folders[folders.Length - 1] : folders[0];
             return parentName;
         }
+
+        public string GetDFSURL()
+        {
+            var dfsURL = StorageAccount.Replace(".blob.core.windows.net", ".dfs.core.windows.net");
+            dfsURL = dfsURL.StartsWith("https://") ? dfsURL : $"https://{dfsURL}";
+            return dfsURL;
+        }
     }
 }

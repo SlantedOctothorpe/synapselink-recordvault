@@ -35,7 +35,11 @@ namespace RecordVault.Application.Services
         {
             var storageURL = new AzureStorageURL(fileURL);
 
-            var cdmEntity = _cdmService.GetCDMEntityFromStorageAccountURL(storageURL);
+            var cdmEntity = _cdmService.GetCDMEntityNameFromStorageAccountURL(storageURL);
+
+            var stagingPrefix = Environment.GetEnvironmentVariable("RecordVaultDBStagingTablePrefix");
+
+            var stagingTableName =  $"{stagingPrefix}{cdmEntity}";
 
             // Get CDMService to return SQL statements
 
@@ -46,7 +50,7 @@ namespace RecordVault.Application.Services
             var sqlConnectionString = Environment.GetEnvironmentVariable("RecodVaultDBConnectionString") ?? "";
             var sqlType = Environment.GetEnvironmentVariable("RecodVaultDBType") ?? "";
 
-            _csvProcessingService.CSVStreamReaderToSQL(streamReader, cdmEntity.GetTableStagingName(),
+            _csvProcessingService.CSVStreamReaderToSQL(streamReader, stagingTableName,
                 connectionString: sqlConnectionString, sqlType: sqlType);
            
             // loop here?

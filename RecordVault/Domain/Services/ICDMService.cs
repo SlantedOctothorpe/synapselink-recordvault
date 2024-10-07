@@ -10,11 +10,10 @@ namespace RecordVault.Domain.Services
 {
     public interface ICDMService
     {
-        public SqlCdmTable GetCDMEntityFromStorageAccountURL(AzureStorageURL storageURL);
+        public string GetCDMEntityNameFromStorageAccountURL(AzureStorageURL storageURL);
 
         public List<string> GetCDMEntityList (string manifestURL = "");
 
-        // TODO remove this and replace with own return type
-        public Task GetCDMEntityMetadataList (string manifestURL = "");
+        public Task<IEnumerable<SqlCdmTable>> GetCDMEntityMetadataList (string manifestURL = "", string singleEntityName = "");
     }
 }

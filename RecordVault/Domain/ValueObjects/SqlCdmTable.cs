@@ -10,9 +10,12 @@ namespace RecordVault.Domain.ValueObjects
     {
         public string TableName { get; private set; }
 
-        public SqlCdmTable(string tableName)
+        public IEnumerable<SQLCdmColumn> Columns { get; private set; }
+
+        public SqlCdmTable(string tableName, IEnumerable<SQLCdmColumn> columns)
         {
             TableName = tableName;
+            Columns = columns;
         }
 
         public string GetTableStagingName()
