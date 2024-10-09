@@ -163,6 +163,7 @@ namespace RecordVault.Application.Services
 
         private string GetCdmAttributeDataType(CdmTypeAttributeDefinition cdmAttribute)
         {
+            // TODO custom data types e.g. SYSROWVERSION to be timestamp or rowversion not int64
             var dataType = cdmAttribute.DataFormat.ToString();
             if (cdmAttribute.DataType != null)
             {
@@ -243,6 +244,7 @@ namespace RecordVault.Application.Services
             return scale;
         }
 
+        // TODO Remove this method
         private async Task tempLocalCDM()
         {
             var cdmCorpus = new CdmCorpusDefinition();
