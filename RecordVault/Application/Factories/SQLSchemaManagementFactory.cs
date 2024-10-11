@@ -1,6 +1,6 @@
-﻿using RecordVault.Domain.Enums;
-using RecordVault.Domain.Persistence;
-using RecordVault.Infrastructure.Persistence;
+﻿using RecordVault.Application.Services;
+using RecordVault.Domain.Enums;
+using RecordVault.Domain.Services;
 
 using System;
 using System.Collections.Generic;
@@ -10,16 +10,16 @@ using System.Threading.Tasks;
 
 namespace RecordVault.Application.Factories
 {
-    public class SQLPersistenceFactory
+    public class SQLSchemaManagementFactory
     {
         private readonly IServiceProvider _serviceProvider;
 
-        public SQLPersistenceFactory(IServiceProvider serviceProvider)
+        public SQLSchemaManagementFactory(IServiceProvider serviceProvider)
         {
             _serviceProvider = serviceProvider;
         }
 
-        public ISQLPersistence GetSQLPersistence(string sqlTypeParam = "")
+        public ISQLSchemaManagementService GetSQLSchemaManagementService(string sqlTypeParam = "")
         {
             var sqlTypeStr = sqlTypeParam;
 
@@ -38,7 +38,7 @@ namespace RecordVault.Application.Factories
             switch (sqlType)
             {
                 case SQLImplementationEnum.SQLServer:
-                    var sqlPersistance = _serviceProvider.GetService(typeof(SQLServerPersistence)) as ISQLPersistence;
+                    var sqlPersistance = _serviceProvider.GetService(typeof(SQLServerSchemaService)) as ISQLSchemaManagementService;
                     if (sqlPersistance == null)
                     {
                         throw new ArgumentException("SQL Server Persistence not found");

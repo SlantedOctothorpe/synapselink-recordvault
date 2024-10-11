@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 namespace RecordVault.Domain.ValueObjects
 {
     // TODO defaults by config
-    public class SQLCdmColumn (string columnName, string dataType, bool? isNullable = true, int maxLength = -1, int precision = 38, int scale = 6)
+    public class SQLColumn (string columnName, string dataType, bool? isNullable = true, int maxLength = -1, int precision = 0, int scale = 0)
     {
         public string ColumnName { get; private set; } = columnName;
         public string DataType { get; private set; } = dataType;

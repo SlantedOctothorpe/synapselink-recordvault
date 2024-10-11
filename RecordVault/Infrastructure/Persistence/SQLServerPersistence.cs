@@ -33,7 +33,40 @@ namespace RecordVault.Infrastructure.Persistence
             return conn;
         }
 
-        public IEnumerable<DbColumn> GetSQLTableSchema(string tableName, SqlConnection sqlConnection)
+        public bool CheckTableExists(string tableName, SqlConnection sqlConnection)
+        {
+            var command = sqlConnection.CreateCommand();
+            command.CommandText = $"SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = '{tableName}'";
+            command.CommandType = CommandType.Text;
+
+            sqlConnection.Open();
+
+            var count = (int)command.ExecuteScalar();
+
+            sqlConnection.Close();
+
+            return count > 0;
+        }
+
+        public DataTable GetSQLTableSchema(string tableName, SqlConnection sqlConnection)
+        {
+            var command = sqlConnection.CreateCommand();
+            command.CommandText = $"SELECT top 0 * FROM {tableName}";
+            command.CommandType = CommandType.Text;
+
+            sqlConnection.Open();
+
+            // CommandBehavior.KeyInfo is required to get column schema
+            // as per https://stackoverflow.com/questions/173834/getting-the-schema-for-a-table
+            var reader = command.ExecuteReader(CommandBehavior.KeyInfo);
+            var tableSchema = reader.GetSchemaTable();
+
+            sqlConnection.Close();
+
+            return tableSchema;
+        }
+
+        public IEnumerable<DbColumn> GetSQLColumnSchema(string tableName, SqlConnection sqlConnection)
         {
             // This method is a modified version of the example provided in the Sylvan.Data.Csv documentation:
             // https://github.com/MarkPflug/Sylvan/blob/main/docs/Csv/Examples.md#bulk-load-csv-data-into-sqlserver
@@ -59,6 +92,20 @@ namespace RecordVault.Infrastructure.Persistence
             bulkCopy.BulkCopyTimeout = 0;
             bulkCopy.BatchSize = 10000;
             bulkCopy.WriteToServer(csv);
+        }
+
+        public void ExecuteNonQuery(string query, SqlConnection sqlConnection)
+        {
+            // Runs query not expecting a result set
+            var command = sqlConnection.CreateCommand();
+            command.CommandText = query;
+            command.CommandType = CommandType.Text;
+
+            sqlConnection.Open();
+
+            command.ExecuteNonQuery();
+
+            sqlConnection.Close();
         }
     }
 }
