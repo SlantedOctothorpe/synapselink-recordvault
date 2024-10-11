@@ -30,7 +30,7 @@ namespace RecordVault.Application.Services
 
             // May need to add a check for the SQL type here #TODO
             var sqlConnection = sqlPersistence.GetSQLConnection(connectionString);
-            var sqlTableSchema = sqlPersistence.GetSQLTableSchema(tableName, sqlConnection);
+            var sqlTableSchema = sqlPersistence.GetSQLColumnSchema(tableName, sqlConnection);
 
             var csvOptions = new CsvDataReaderOptions
             {

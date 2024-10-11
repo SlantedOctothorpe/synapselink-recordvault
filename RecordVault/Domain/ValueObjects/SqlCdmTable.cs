@@ -18,7 +18,15 @@ namespace RecordVault.Domain.ValueObjects
             Columns = columns;
         }
 
-        public string GetTableStagingName()
+        /// <summary>
+        /// Create a new table with the same columns as the current table, but with a name including the staging prefix
+        /// </summary>
+        /// <remarks>
+        /// This is a shallow copy of columns only, changes to the new or existing object will update both
+        /// </remarks>
+        /// <returns>A copy of <c>SqlCdmTable</c></returns>
+        /// <exception cref="ArgumentException"></exception>
+        public SqlCdmTable CopyAsStagingTable()
         {
             var stagingPrefix = Environment.GetEnvironmentVariable("RecordVaultDBStagingTablePrefix");
             if (string.IsNullOrEmpty(stagingPrefix))
@@ -26,7 +34,11 @@ namespace RecordVault.Domain.ValueObjects
                 throw new ArgumentException("Staging Table Prefix not provided");
             }
 
-            return $"{stagingPrefix}{TableName}";
+            // This is a shallow copy only, the columns are not cloned
+            var newTableName = $"{stagingPrefix}{TableName}";
+            var stagingTable = new SqlCdmTable(newTableName, Columns);
+
+            return stagingTable;
         }
     }
 }

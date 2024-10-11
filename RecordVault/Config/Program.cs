@@ -20,6 +20,10 @@ var host = new HostBuilder()
         services.AddScoped<SQLServerPersistence>()
             .AddScoped<ISQLPersistence, SQLServerPersistence>(sp => sp.GetRequiredService<SQLServerPersistence>());
 
+        services.AddScoped<SQLSchemaManagementFactory>();
+        services.AddScoped<SQLServerSchemaService>()
+            .AddScoped<ISQLSchemaManagementService, SQLServerSchemaService>(sp => sp.GetRequiredService<SQLServerSchemaService>());
+
         services.AddTransient<IAzureStorageAccountPersistence, AzureStorageAccountPersistence>();
         services.AddTransient<ICSVProcessingService, SylvanCSVService>();
         services.AddTransient<ICDMService, CDMService>();
