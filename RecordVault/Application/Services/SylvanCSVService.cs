@@ -32,6 +32,9 @@ namespace RecordVault.Application.Services
             var sqlConnection = sqlPersistence.GetSQLConnection(connectionString);
             var sqlTableSchema = sqlPersistence.GetSQLColumnSchema(tableName, sqlConnection);
 
+            // What happens when/if sql columns are out of order from CSV? How to ensure correct ordering?
+            //       Can we sort based on the cdm colums?
+
             var csvOptions = new CsvDataReaderOptions
             {
                 Schema = new CsvSchema(sqlTableSchema)

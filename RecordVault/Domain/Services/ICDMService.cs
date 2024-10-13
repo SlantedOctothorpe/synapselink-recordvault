@@ -14,6 +14,6 @@ namespace RecordVault.Domain.Services
 
         public List<string> GetCDMEntityList (string manifestURL = "");
 
-        public Task<IEnumerable<SqlCdmTable>> GetCDMEntityMetadataList (string manifestURL = "", string singleEntityName = "");
+        public Task<IEnumerable<SqlCdmTable>> GetCDMEntityMetadata (string manifestURL = "", string singleEntityName = "");
     }
 }

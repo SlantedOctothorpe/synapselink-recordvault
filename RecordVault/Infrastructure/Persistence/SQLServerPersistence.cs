@@ -21,7 +21,7 @@ namespace RecordVault.Infrastructure.Persistence
         {
             if (connectionString.IsNullOrEmpty())
             {
-                connectionString = Environment.GetEnvironmentVariable("RecodVaultDBConnectionString") ?? "";
+                connectionString = Environment.GetEnvironmentVariable("RecordVaultDBConnectionString") ?? "";
             }
 
             if (connectionString.IsNullOrEmpty())
@@ -36,7 +36,8 @@ namespace RecordVault.Infrastructure.Persistence
         public bool CheckTableExists(string tableName, SqlConnection sqlConnection)
         {
             var command = sqlConnection.CreateCommand();
-            command.CommandText = $"SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = '{tableName}'";
+            //command.CommandText = $"SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = '{tableName}'";
+            command.CommandText = $"select case when exists((select * from information_schema.tables where table_name = '{tableName}')) then 1 else 0 end";
             command.CommandType = CommandType.Text;
 
             sqlConnection.Open();
@@ -74,8 +75,13 @@ namespace RecordVault.Infrastructure.Persistence
             // TODO will table always be in dbo schema?
             var command = sqlConnection.CreateCommand();
             command.CommandText = $"SELECT top 0 * FROM {tableName}";
+
+            sqlConnection.Open();
+
             var reader = command.ExecuteReader();
             var tableSchema = reader.GetColumnSchema();
+
+            sqlConnection.Close();
 
             return tableSchema;
         }
@@ -91,7 +97,12 @@ namespace RecordVault.Infrastructure.Persistence
             };
             bulkCopy.BulkCopyTimeout = 0;
             bulkCopy.BatchSize = 10000;
+
+            sqlConnection.Open();
+
             bulkCopy.WriteToServer(csv);
+
+            sqlConnection.Close();
         }
 
         public void ExecuteNonQuery(string query, SqlConnection sqlConnection)
