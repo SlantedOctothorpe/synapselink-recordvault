@@ -6,6 +6,7 @@ using RecordVault.Application.Factories;
 using RecordVault.Application.Services;
 using RecordVault.Domain.Persistence;
 using RecordVault.Domain.Services;
+using RecordVault.Infrastructure.CSV;
 using RecordVault.Infrastructure.Persistence;
 
 var host = new HostBuilder()
@@ -25,10 +26,15 @@ var host = new HostBuilder()
             .AddScoped<ISQLSchemaManagementService, SQLServerSchemaService>(sp => sp.GetRequiredService<SQLServerSchemaService>());
 
         services.AddTransient<IAzureStorageAccountPersistence, AzureStorageAccountPersistence>();
-        services.AddTransient<ICSVProcessingService, SylvanCSVService>();
+        
         services.AddTransient<ICDMService, CDMService>();
 
         services.AddTransient<IDataSyncService, DataSyncService>();
+
+        services.AddScoped<ICSVProcessingService, SylvanCSVProcessor>();
+        services.AddScoped<ICSVProducer, CSVProducer>();
+        services.AddScoped<ICSVConsumer, CSVConsumer>();
+
     })
     .Build();
 

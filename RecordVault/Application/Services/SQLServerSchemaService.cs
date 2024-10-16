@@ -2,17 +2,11 @@
 using Microsoft.IdentityModel.Tokens;
 
 using RecordVault.Application.Factories;
-using RecordVault.Domain.Enums;
 using RecordVault.Domain.Persistence;
 using RecordVault.Domain.Services;
 using RecordVault.Domain.ValueObjects;
-
-using System;
-using System.Collections.Generic;
 using System.Data;
-using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace RecordVault.Application.Services
 {

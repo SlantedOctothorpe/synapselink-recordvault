@@ -1,14 +1,8 @@
 ﻿using Microsoft.Data.SqlClient;
 
 using Sylvan.Data.Csv;
-
-using System;
-using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace RecordVault.Domain.Persistence
 {
@@ -34,5 +28,7 @@ namespace RecordVault.Domain.Persistence
         public void InsertCsvData(string tableName, SqlConnection sqlConnection, CsvDataReader csv);
 
         public void ExecuteNonQuery(string query, SqlConnection sqlConnection);
+
+        Task InsertCsvDataAsync(string tableName, SqlConnection sqlConnection, List<object[]> batch);
     }
 }

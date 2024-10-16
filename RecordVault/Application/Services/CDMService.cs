@@ -3,18 +3,9 @@ using Microsoft.CommonDataModel.ObjectModel.Storage;
 using Microsoft.CommonDataModel.ObjectModel.Utilities.Network;
 using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
-
-using RecordVault.Domain.Persistence;
 using RecordVault.Domain.Services;
 using RecordVault.Domain.ValueObjects;
 using RecordVault.Infrastructure.Persistence;
-
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace RecordVault.Application.Services
 {

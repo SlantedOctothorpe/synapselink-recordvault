@@ -4,14 +4,8 @@ using Microsoft.IdentityModel.Tokens;
 using RecordVault.Domain.Persistence;
 
 using Sylvan.Data.Csv;
-
-using System;
-using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace RecordVault.Infrastructure.Persistence
 {
@@ -118,5 +112,49 @@ namespace RecordVault.Infrastructure.Persistence
 
             sqlConnection.Close();
         }
+
+        public async Task InsertCsvDataAsync(string tableName, SqlConnection sqlConnection, List<object[]> batch)
+        {
+            var dataTable = CreateDataTable(tableName, sqlConnection, batch);
+
+            using var bulkCopy = new SqlBulkCopy(sqlConnection)
+            {
+                DestinationTableName = tableName,
+                BulkCopyTimeout = 0,
+                BatchSize = 10000
+            };
+
+            try
+            {
+                await sqlConnection.OpenAsync();
+                await bulkCopy.WriteToServerAsync(dataTable);
+            }
+            finally
+            {
+                if (sqlConnection.State == ConnectionState.Open)
+                {
+                    await sqlConnection.CloseAsync();
+                }
+            }
+        }
+
+        private DataTable CreateDataTable(string tableName, SqlConnection sqlConnection, List<object[]> batch)
+        {
+            var schema = GetSQLColumnSchema(tableName, sqlConnection);
+            var dataTable = new DataTable();
+
+            foreach (var column in schema)
+            {
+                dataTable.Columns.Add(column.ColumnName, column.DataType ?? typeof(object));
+            }
+
+            foreach (var row in batch)
+            {
+                dataTable.Rows.Add(row);
+            }
+
+            return dataTable;
+        }
+
     }
 }

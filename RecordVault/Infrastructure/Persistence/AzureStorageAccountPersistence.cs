@@ -3,11 +3,6 @@ using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using RecordVault.Domain.Persistence;
 using RecordVault.Domain.ValueObjects;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace RecordVault.Infrastructure.Persistence
 {
