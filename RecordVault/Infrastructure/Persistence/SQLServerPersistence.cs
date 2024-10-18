@@ -4,14 +4,8 @@ using Microsoft.IdentityModel.Tokens;
 using RecordVault.Domain.Persistence;
 
 using Sylvan.Data.Csv;
-
-using System;
-using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace RecordVault.Infrastructure.Persistence
 {
@@ -21,7 +15,7 @@ namespace RecordVault.Infrastructure.Persistence
         {
             if (connectionString.IsNullOrEmpty())
             {
-                connectionString = Environment.GetEnvironmentVariable("RecodVaultDBConnectionString") ?? "";
+                connectionString = Environment.GetEnvironmentVariable("RecordVaultDBConnectionString") ?? "";
             }
 
             if (connectionString.IsNullOrEmpty())
@@ -36,7 +30,8 @@ namespace RecordVault.Infrastructure.Persistence
         public bool CheckTableExists(string tableName, SqlConnection sqlConnection)
         {
             var command = sqlConnection.CreateCommand();
-            command.CommandText = $"SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = '{tableName}'";
+            //command.CommandText = $"SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = '{tableName}'";
+            command.CommandText = $"select case when exists((select * from information_schema.tables where table_name = '{tableName}')) then 1 else 0 end";
             command.CommandType = CommandType.Text;
 
             sqlConnection.Open();
@@ -74,8 +69,13 @@ namespace RecordVault.Infrastructure.Persistence
             // TODO will table always be in dbo schema?
             var command = sqlConnection.CreateCommand();
             command.CommandText = $"SELECT top 0 * FROM {tableName}";
+
+            sqlConnection.Open();
+
             var reader = command.ExecuteReader();
             var tableSchema = reader.GetColumnSchema();
+
+            sqlConnection.Close();
 
             return tableSchema;
         }
@@ -91,7 +91,12 @@ namespace RecordVault.Infrastructure.Persistence
             };
             bulkCopy.BulkCopyTimeout = 0;
             bulkCopy.BatchSize = 10000;
+
+            sqlConnection.Open();
+
             bulkCopy.WriteToServer(csv);
+
+            sqlConnection.Close();
         }
 
         public void ExecuteNonQuery(string query, SqlConnection sqlConnection)
@@ -107,5 +112,49 @@ namespace RecordVault.Infrastructure.Persistence
 
             sqlConnection.Close();
         }
+
+        public async Task InsertCsvDataAsync(string tableName, SqlConnection sqlConnection, List<object[]> batch)
+        {
+            var dataTable = CreateDataTable(tableName, sqlConnection, batch);
+
+            using var bulkCopy = new SqlBulkCopy(sqlConnection)
+            {
+                DestinationTableName = tableName,
+                BulkCopyTimeout = 0,
+                BatchSize = 10000
+            };
+
+            try
+            {
+                await sqlConnection.OpenAsync();
+                await bulkCopy.WriteToServerAsync(dataTable);
+            }
+            finally
+            {
+                if (sqlConnection.State == ConnectionState.Open)
+                {
+                    await sqlConnection.CloseAsync();
+                }
+            }
+        }
+
+        private DataTable CreateDataTable(string tableName, SqlConnection sqlConnection, List<object[]> batch)
+        {
+            var schema = GetSQLColumnSchema(tableName, sqlConnection);
+            var dataTable = new DataTable();
+
+            foreach (var column in schema)
+            {
+                dataTable.Columns.Add(column.ColumnName, column.DataType ?? typeof(object));
+            }
+
+            foreach (var row in batch)
+            {
+                dataTable.Rows.Add(row);
+            }
+
+            return dataTable;
+        }
+
     }
 }

@@ -3,12 +3,6 @@ using RecordVault.Domain.Persistence;
 using RecordVault.Domain.Services;
 using RecordVault.Domain.ValueObjects;
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
 namespace RecordVault.Application.Services
 {
     public class DataSyncService : IDataSyncService
@@ -50,7 +44,7 @@ namespace RecordVault.Application.Services
             var sqlConnectionString = Environment.GetEnvironmentVariable("RecodVaultDBConnectionString") ?? "";
             var sqlType = Environment.GetEnvironmentVariable("RecodVaultDBType") ?? "";
 
-            _csvProcessingService.CSVStreamReaderToSQL(streamReader, stagingTableName,
+            await _csvProcessingService.CSVStreamReaderToSQL(streamReader, stagingTableName,
                 connectionString: sqlConnectionString, sqlType: sqlType);
            
             // loop here?

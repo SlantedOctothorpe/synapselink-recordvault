@@ -2,12 +2,6 @@
 
 using RecordVault.Domain.Persistence;
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
 namespace RecordVault.Infrastructure.Persistence
 {
     public class AzureTokenProvider : IMicrosoftTokenProvider

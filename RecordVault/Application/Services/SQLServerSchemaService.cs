@@ -2,17 +2,11 @@
 using Microsoft.IdentityModel.Tokens;
 
 using RecordVault.Application.Factories;
-using RecordVault.Domain.Enums;
 using RecordVault.Domain.Persistence;
 using RecordVault.Domain.Services;
 using RecordVault.Domain.ValueObjects;
-
-using System;
-using System.Collections.Generic;
 using System.Data;
-using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace RecordVault.Application.Services
 {
@@ -26,8 +20,7 @@ namespace RecordVault.Application.Services
             _logger = logger;
 
             // SQL Server is the only supported SQL type for this implementation
-            var sqlType = SQLImplementationEnum.SQLServer.ToString();
-            var sqlPersistence = sqlPersistenceFactory.GetSQLPersistence(sqlType);
+            var sqlPersistence = sqlPersistenceFactory.GetSQLPersistence();
             _sqlPersistence = sqlPersistence;
         }
 
@@ -85,6 +78,8 @@ namespace RecordVault.Application.Services
                     columnScript += " NOT NULL";
                 }
 
+                columnScript += ", ";
+
                 script.Append(columnScript);
             }
 
@@ -109,11 +104,14 @@ namespace RecordVault.Application.Services
                     // Column exists in current table schema
                     var currentColumn = value;
 
-                    // TODO Wrong logic
-                    if (currentColumn.DataType.ToLower() != columnBaseSQLDataType)
+                    var updateColumn = false;
+
+                    if (!currentColumn.DataType.Equals(columnBaseSQLDataType, StringComparison.CurrentCultureIgnoreCase))
                     {
-                        var updateColumn = false;
-                        
+                        updateColumn = true;
+                    }
+                    else
+                    {
                         if (IsMaxLengthUsedForDataType(columnBaseSQLDataType))
                         {
                             if (currentColumn.MaxLength != column.MaxLength)
@@ -128,25 +126,25 @@ namespace RecordVault.Application.Services
                                 updateColumn = true;
                             }
                         }
+                    }
 
-                        if (updateColumn)
-                        {
-                            // Column data type has changed
-                            var alterColumnScript = $"ALTER TABLE {tableName} ALTER COLUMN {column.ColumnName} {columnSQLDataType};";
-                            alterTableScriptBuilder.AppendLine(alterColumnScript);
-                        }
+                    if (updateColumn)
+                    {
+                        // Column data type has changed
+                        var alterColumnScript = $"ALTER TABLE {tableName} ALTER COLUMN {column.ColumnName} {columnSQLDataType};";
+                        alterTableScriptBuilder.AppendLine(alterColumnScript);
                     }
                 }
                 else
                 {
                     // Column does not exist in current table schema
-                    var addColumnScript = $"ALTER TABLE {tableName} ADD COLUMN {column.ColumnName} {columnSQLDataType};";
+                    var addColumnScript = $"ALTER TABLE {tableName} ADD {column.ColumnName} {columnSQLDataType};";
                     alterTableScriptBuilder.AppendLine(addColumnScript);
                 }
             }
 
             var alterTableScript = alterTableScriptBuilder.ToString();
-            return (alterTableScript, alterTableScript.IsNullOrEmpty());
+            return (alterTableScript, !alterTableScript.IsNullOrEmpty());
         }
 
         private string CdmDataTypeToSQLDataType(string cdmDataType, int maxLength, int numericPrecision, int numericScale)
@@ -219,20 +217,30 @@ namespace RecordVault.Application.Services
 
             foreach (DataRow row in tableSchema.Rows)
             {
-                var columnName = (string)row["ColumnName"];
-                var dataType = (string)row["DataType"];
+                var columnNameField = row["ColumnName"];
+                var columnName = (string)columnNameField;
+                var dataTypeField = row["DataTypeName"];
+                var dataType = (string)dataTypeField;
 
-                var maxLengthResult = int.TryParse((string)row["ColumnSize"], out var maxLenOut);
-                var maxLength = maxLengthResult ? maxLenOut : -1;
+                var columnSizeField = row["ColumnSize"];
+                //var maxLengthResult = int.TryParse((string)columnSizeField, out var maxLenOut);
+                //var maxLength = maxLengthResult ? maxLenOut : -1;
+                var maxLength = (int)columnSizeField;
 
-                var precisionResult = int.TryParse((string)row["NumericPrecision"], out var precisionOut);
-                var precision = precisionResult ? precisionOut : 0;
+                var numericPrecisionField = row["NumericPrecision"];
+                //var precisionResult = int.TryParse((string)numericPrecisionField, out var precisionOut);
+                //var precision = precisionResult ? precisionOut : 0;
+                var precision = Convert.ToInt32(numericPrecisionField);
 
-                var scaleResult = int.TryParse((string)row["NumericScale"], out var scaleOut);
-                var scale = scaleResult ? scaleOut : 0;
+                var scaleField = row["NumericScale"];
+                //var scaleResult = int.TryParse((string)scaleField, out var scaleOut);
+                //var scale = scaleResult ? scaleOut : 0;
+                var scale = Convert.ToInt32(scaleField);
 
-                var isNullableResult = bool.TryParse((string)row["AllowDBNull"], out var isNullableOut);
-                var isNullable = isNullableResult ? isNullableOut : true;
+                var isNullableField = row["AllowDBNull"];
+                //var isNullableResult = bool.TryParse((string)isNullableField, out var isNullableOut);
+                //var isNullable = isNullableResult ? isNullableOut : true;
+                var isNullable = (bool)isNullableField;
 
                 var sqlColumn = new SQLColumn(columnName, dataType, isNullable, maxLength, precision, scale);
                 columns.Add(columnName, sqlColumn);

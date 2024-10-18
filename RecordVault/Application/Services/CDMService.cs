@@ -3,18 +3,9 @@ using Microsoft.CommonDataModel.ObjectModel.Storage;
 using Microsoft.CommonDataModel.ObjectModel.Utilities.Network;
 using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
-
-using RecordVault.Domain.Persistence;
 using RecordVault.Domain.Services;
 using RecordVault.Domain.ValueObjects;
 using RecordVault.Infrastructure.Persistence;
-
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace RecordVault.Application.Services
 {
@@ -37,7 +28,7 @@ namespace RecordVault.Application.Services
             throw new NotImplementedException();
         }
 
-        public async Task<IEnumerable<SqlCdmTable>> GetCDMEntityMetadataList(string manifestURL = "", string singleEntityName = "")
+        public async Task<IEnumerable<SqlCdmTable>> GetCDMEntityMetadata(string manifestURL = "", string singleEntityName = "")
         {
             // TODO First attempt using hard coded values
             // May need to use a TokenProviderFactory to get the token provider
@@ -102,27 +93,28 @@ namespace RecordVault.Application.Services
 
             var cdmCorpus = new CdmCorpusDefinition();
 
+            // TODO msitoken still not working
             //cdmCorpus.Storage.Mount("adls", new ADLSAdapter(
             //  hostName, // Hostname.
             //  rootFolder,
             //  msitokenProvider // Token provider.
             //));
 
-            //cdmCorpus.Storage.Mount("adls", new ADLSAdapter(
-            //  hostName, // Hostname.
-            //  rootFolder,
-            //  tmpSharedKey
-            //));
+            cdmCorpus.Storage.Mount("adls", new ADLSAdapter(
+              hostName, // Hostname.
+              rootFolder,
+              tmpSharedKey
+            ));
 
-            //cdmCorpus.Storage.DefaultNamespace = "adls";
+            cdmCorpus.Storage.DefaultNamespace = "adls";
 
 
             // Test Storage Adapter
-            var pathToManifestFolder = "./";
+            //var pathToManifestFolder = "./";
 
-            cdmCorpus.Storage.Mount("local", new LocalAdapter(pathToManifestFolder));
+            //cdmCorpus.Storage.Mount("local", new LocalAdapter(pathToManifestFolder));
 
-            cdmCorpus.Storage.DefaultNamespace = "local";
+            //cdmCorpus.Storage.DefaultNamespace = "local";
 
             return cdmCorpus;
         }

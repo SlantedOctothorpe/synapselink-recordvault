@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace RecordVault.Domain.ValueObjects
+﻿namespace RecordVault.Domain.ValueObjects
 {
     // TODO defaults by config
     public class SQLColumn (string columnName, string dataType, bool? isNullable = true, int maxLength = -1, int precision = 0, int scale = 0)
