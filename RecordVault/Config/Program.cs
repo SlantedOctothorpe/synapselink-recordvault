@@ -20,11 +20,13 @@ var host = new HostBuilder()
 
         // Persistence
         services.AddScoped<SQLPersistenceFactory>();
-        services.AddScoped<ISQLPersistence, SQLServerPersistence>();
+        services.AddScoped<SQLServerPersistence>()
+            .AddScoped<ISQLPersistence, SQLServerPersistence>(sp => sp.GetRequiredService<SQLServerPersistence>());
 
         // Schema Management
         services.AddScoped<SQLSchemaManagementFactory>();
-        services.AddScoped<ISQLSchemaManagementService, SQLServerSchemaService>();
+        services.AddScoped<SQLServerSchemaService>()
+            .AddScoped<ISQLSchemaManagementService, SQLServerSchemaService>(sp => sp.GetRequiredService<SQLServerSchemaService>());
 
         // Azure Storage
         services.AddTransient<IAzureStorageAccountPersistence, AzureStorageAccountPersistence>();
