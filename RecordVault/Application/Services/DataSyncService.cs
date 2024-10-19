@@ -10,19 +10,19 @@ namespace RecordVault.Application.Services
         private readonly ILogger<DataSyncService> _logger;
         private readonly IAzureStorageAccountPersistence _azureStorageAccountPersistence;
         private readonly ICDMService _cdmService;
-        private readonly ICSVProcessingService _csvProcessingService;
+        private readonly IFileProcessingService _fileProcessingService;
 
         public DataSyncService(
             ILogger<DataSyncService> logger,
             IAzureStorageAccountPersistence azureStorageAccountPersistence,
             ICDMService cdmService,
-            ICSVProcessingService csvProcessingService
+            IFileProcessingService fileProcessingService
         )
         {
             _logger = logger;
             _azureStorageAccountPersistence = azureStorageAccountPersistence;
             _cdmService = cdmService;
-            _csvProcessingService = csvProcessingService;
+            _fileProcessingService = fileProcessingService;
         }
 
         public async Task SyncStorageAccountFile(string fileURL)
@@ -39,14 +39,16 @@ namespace RecordVault.Application.Services
 
             // Execute SQL statements
 
-            var streamReader = await _azureStorageAccountPersistence.GetStreamReaderFromURL(storageURL);
+            using var stream = await _azureStorageAccountPersistence.GetStreamFromURL(storageURL);
 
             var sqlConnectionString = Environment.GetEnvironmentVariable("RecodVaultDBConnectionString") ?? "";
             var sqlType = Environment.GetEnvironmentVariable("RecodVaultDBType") ?? "";
 
-            await _csvProcessingService.CSVStreamReaderToSQL(streamReader, stagingTableName,
-                connectionString: sqlConnectionString, sqlType: sqlType);
-           
+            var fileType = DetermineFileType(fileURL);
+
+            await _fileProcessingService.ProcessFileToSQL(stream, fileType, stagingTableName, sqlConnectionString, sqlType);
+
+
             // loop here?
 
             // run merge proc
@@ -58,6 +60,17 @@ namespace RecordVault.Application.Services
             // Process enum values to SQL table
 
             // push event to downstream apps
+        }
+
+        private string DetermineFileType(string fileURL)
+        {
+            string extension = Path.GetExtension(fileURL).ToLower();
+            return extension switch
+            {
+                ".csv" => "csv",
+                ".parquet" => "parquet",
+                _ => throw new NotSupportedException($"Unsupported file type: {extension}")
+            };
         }
     }
 }

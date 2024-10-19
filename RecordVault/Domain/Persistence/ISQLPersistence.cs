@@ -1,16 +1,13 @@
-﻿using Microsoft.Data.SqlClient;
-
-using Sylvan.Data.Csv;
-using System.Data;
+﻿using System.Data;
 using System.Data.Common;
+using Microsoft.Data.SqlClient;
 
 namespace RecordVault.Domain.Persistence
 {
     public interface ISQLPersistence
     {
-        public SqlConnection GetSQLConnection(string connectionString = "");
-
-        public bool CheckTableExists(string tableName, SqlConnection sqlConnection);
+        IDbConnection GetSQLConnection(string connectionString = "");
+        bool CheckTableExists(string tableName, IDbConnection connection);
 
         /// <summary>
         /// Fetches schema for a SQL table using the passed connection
@@ -19,16 +16,18 @@ namespace RecordVault.Domain.Persistence
         /// The column details for the schema are at https://learn.microsoft.com/en-us/dotnet/api/system.data.sqlclient.sqldatareader.getschematable?view=netframework-4.8.1&viewFallbackFrom=net-8.0
         /// </remarks>
         /// <param name="tableName"></param>
-        /// <param name="sqlConnection"></param>
-        /// <returns>Sytem.Data.DataTable with fields with column information</returns>
-        public DataTable GetSQLTableSchema(string tableName, SqlConnection sqlConnection);
+        /// <param name="connection"></param>
+        /// <returns>System.Data.DataTable with fields with column information</returns>
+        DataTable GetSQLTableSchema(string tableName, IDbConnection connection);
 
-        public IEnumerable<DbColumn> GetSQLColumnSchema(string tableName, SqlConnection sqlConnection);
+        IEnumerable<DbColumn> GetSQLColumnSchema(string tableName, IDbConnection connection);
 
-        public void InsertCsvData(string tableName, SqlConnection sqlConnection, CsvDataReader csv);
+        void ExecuteNonQuery(string query, IDbConnection connection);
 
-        public void ExecuteNonQuery(string query, SqlConnection sqlConnection);
+        Task InsertDataAsync(string tableName, IDbConnection connection, IDataReader dataReader);
+        Task InsertDataAsync(string tableName, IDbConnection connection, List<object[]> batch);
 
+        SqlConnection GetSqlServerConnection(string connectionString = "");
         Task InsertCsvDataAsync(string tableName, SqlConnection sqlConnection, List<object[]> batch);
     }
 }

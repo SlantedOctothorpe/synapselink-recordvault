@@ -1,9 +1,6 @@
 ﻿using Microsoft.Data.SqlClient;
 using Microsoft.IdentityModel.Tokens;
-
 using RecordVault.Domain.Persistence;
-
-using Sylvan.Data.Csv;
 using System.Data;
 using System.Data.Common;
 
@@ -11,7 +8,12 @@ namespace RecordVault.Infrastructure.Persistence
 {
     public class SQLServerPersistence : ISQLPersistence
     {
-        public SqlConnection GetSQLConnection(string connectionString = "")
+        public IDbConnection GetSQLConnection(string connectionString = "")
+        {
+            return GetSqlServerConnection(connectionString);
+        }
+
+        public SqlConnection GetSqlServerConnection(string connectionString = "")
         {
             if (connectionString.IsNullOrEmpty())
             {
@@ -23,94 +25,91 @@ namespace RecordVault.Infrastructure.Persistence
                 throw new ArgumentException("SQL Connection String not provided");
             }
 
-            var conn = new SqlConnection(connectionString);
-            return conn;
+            return new SqlConnection(connectionString);
         }
 
-        public bool CheckTableExists(string tableName, SqlConnection sqlConnection)
+        public bool CheckTableExists(string tableName, IDbConnection connection)
         {
+            var sqlConnection = (SqlConnection)connection;
             var command = sqlConnection.CreateCommand();
-            //command.CommandText = $"SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = '{tableName}'";
             command.CommandText = $"select case when exists((select * from information_schema.tables where table_name = '{tableName}')) then 1 else 0 end";
             command.CommandType = CommandType.Text;
 
             sqlConnection.Open();
-
             var count = (int)command.ExecuteScalar();
-
             sqlConnection.Close();
 
             return count > 0;
         }
 
-        public DataTable GetSQLTableSchema(string tableName, SqlConnection sqlConnection)
+        public DataTable GetSQLTableSchema(string tableName, IDbConnection connection)
         {
+            var sqlConnection = (SqlConnection)connection;
             var command = sqlConnection.CreateCommand();
             command.CommandText = $"SELECT top 0 * FROM {tableName}";
             command.CommandType = CommandType.Text;
 
             sqlConnection.Open();
-
-            // CommandBehavior.KeyInfo is required to get column schema
-            // as per https://stackoverflow.com/questions/173834/getting-the-schema-for-a-table
             var reader = command.ExecuteReader(CommandBehavior.KeyInfo);
             var tableSchema = reader.GetSchemaTable();
-
             sqlConnection.Close();
 
             return tableSchema;
         }
 
-        public IEnumerable<DbColumn> GetSQLColumnSchema(string tableName, SqlConnection sqlConnection)
+        public IEnumerable<DbColumn> GetSQLColumnSchema(string tableName, IDbConnection connection)
         {
-            // This method is a modified version of the example provided in the Sylvan.Data.Csv documentation:
-            // https://github.com/MarkPflug/Sylvan/blob/main/docs/Csv/Examples.md#bulk-load-csv-data-into-sqlserver
-
-            // TODO will table always be in dbo schema?
+            var sqlConnection = (SqlConnection)connection;
             var command = sqlConnection.CreateCommand();
             command.CommandText = $"SELECT top 0 * FROM {tableName}";
 
             sqlConnection.Open();
-
             var reader = command.ExecuteReader();
             var tableSchema = reader.GetColumnSchema();
-
             sqlConnection.Close();
 
             return tableSchema;
         }
 
-        public void InsertCsvData(string tableName, SqlConnection sqlConnection, CsvDataReader csv)
+        public void ExecuteNonQuery(string query, IDbConnection connection)
         {
-            // This method is a modified version of the example provided in the Sylvan.Data.Csv documentation:
-            // https://github.com/MarkPflug/Sylvan/blob/main/docs/Csv/Examples.md#bulk-load-csv-data-into-sqlserver
-
-            var bulkCopy = new SqlBulkCopy(sqlConnection)
-            {
-                DestinationTableName = tableName
-            };
-            bulkCopy.BulkCopyTimeout = 0;
-            bulkCopy.BatchSize = 10000;
-
-            sqlConnection.Open();
-
-            bulkCopy.WriteToServer(csv);
-
-            sqlConnection.Close();
-        }
-
-        public void ExecuteNonQuery(string query, SqlConnection sqlConnection)
-        {
-            // Runs query not expecting a result set
+            var sqlConnection = (SqlConnection)connection;
             var command = sqlConnection.CreateCommand();
             command.CommandText = query;
             command.CommandType = CommandType.Text;
 
             sqlConnection.Open();
-
             command.ExecuteNonQuery();
-
             sqlConnection.Close();
+        }
+
+        public async Task InsertDataAsync(string tableName, IDbConnection connection, IDataReader dataReader)
+        {
+            var sqlConnection = (SqlConnection)connection;
+            using var bulkCopy = new SqlBulkCopy(sqlConnection)
+            {
+                DestinationTableName = tableName,
+                BulkCopyTimeout = 0,
+                BatchSize = 10000
+            };
+
+            try
+            {
+                await sqlConnection.OpenAsync();
+                await bulkCopy.WriteToServerAsync(dataReader);
+            }
+            finally
+            {
+                if (sqlConnection.State == ConnectionState.Open)
+                {
+                    await sqlConnection.CloseAsync();
+                }
+            }
+        }
+
+        public async Task InsertDataAsync(string tableName, IDbConnection connection, List<object[]> batch)
+        {
+            await InsertCsvDataAsync(tableName, (SqlConnection)connection, batch);
         }
 
         public async Task InsertCsvDataAsync(string tableName, SqlConnection sqlConnection, List<object[]> batch)
@@ -155,6 +154,5 @@ namespace RecordVault.Infrastructure.Persistence
 
             return dataTable;
         }
-
     }
 }
