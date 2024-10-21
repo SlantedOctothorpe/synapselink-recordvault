@@ -55,9 +55,31 @@ namespace RecordVault.Application.Services
             }
         }
 
-        public void CreateOrUpdateMergeCode(SqlCdmTable originalTable, SqlCdmTable stagingTable)
+        public string GenerateMergeCode(SqlCdmTable baseTable, SqlCdmTable stagingTable)
         {
-            throw new NotImplementedException();
+            var mergeCode = new StringBuilder();
+
+            var baseTableName = baseTable.TableName;
+            var stagingTableName = stagingTable.TableName;
+
+            var updateColumnList = GetUpdateColumnList(baseTable.Columns);
+            var insertColumnList = GetInsertColumnList(baseTable.Columns);
+            var insertValuesList = GetInsertValuesList(baseTable.Columns);
+
+            mergeCode.AppendLine("WITH mergeData AS (");
+            mergeCode.AppendLine($"SELECT *, ROW_NUMBER() OVER (PARTITION BY Id ORDER BY versionnumber DESC, SinkModifiedOn DESC) rowNum FROM {stagingTableName} WHERE IsDelete = 0");
+            mergeCode.AppendLine(")");
+            mergeCode.AppendLine($"MERGE INTO {baseTableName} AS tgt");
+            mergeCode.AppendLine($"USING mergeData AS src ON tgt.Id = src.Id AND src.rowNum = 1");
+            mergeCode.AppendLine("WHEN MATCHED AND tgt.SinkModifiedOn <> src.SinkModifiedOn THEN");
+            mergeCode.AppendLine("UPDATE SET");
+            mergeCode.AppendLine(updateColumnList);
+            mergeCode.AppendLine("WHEN NOT MATCHED BY TARGET THEN");
+            mergeCode.AppendLine($"INSERT ({insertColumnList})");
+            mergeCode.AppendLine($"VALUES ({insertValuesList});");
+
+            string mergeCodeOutput = mergeCode.ToString();
+            return mergeCodeOutput;
         }
 
         #region Private Methods
@@ -223,23 +245,15 @@ namespace RecordVault.Application.Services
                 var dataType = (string)dataTypeField;
 
                 var columnSizeField = row["ColumnSize"];
-                //var maxLengthResult = int.TryParse((string)columnSizeField, out var maxLenOut);
-                //var maxLength = maxLengthResult ? maxLenOut : -1;
                 var maxLength = (int)columnSizeField;
 
                 var numericPrecisionField = row["NumericPrecision"];
-                //var precisionResult = int.TryParse((string)numericPrecisionField, out var precisionOut);
-                //var precision = precisionResult ? precisionOut : 0;
                 var precision = Convert.ToInt32(numericPrecisionField);
 
                 var scaleField = row["NumericScale"];
-                //var scaleResult = int.TryParse((string)scaleField, out var scaleOut);
-                //var scale = scaleResult ? scaleOut : 0;
                 var scale = Convert.ToInt32(scaleField);
 
                 var isNullableField = row["AllowDBNull"];
-                //var isNullableResult = bool.TryParse((string)isNullableField, out var isNullableOut);
-                //var isNullable = isNullableResult ? isNullableOut : true;
                 var isNullable = (bool)isNullableField;
 
                 var sqlColumn = new SQLColumn(columnName, dataType, isNullable, maxLength, precision, scale);
@@ -247,6 +261,27 @@ namespace RecordVault.Application.Services
             }
 
             return columns;
+        }
+
+        private string GetUpdateColumnList(IEnumerable<SQLCdmColumn> columns, string targetAlias = "tgt", string sourceAlias = "src")
+        {
+            var updateColumnsScript = string.Join(", ", columns.Select(c => $"{targetAlias}.{c.ColumnName} = {sourceAlias}.{c.ColumnName}"));
+
+            return updateColumnsScript;
+        }
+
+        private string GetInsertColumnList(IEnumerable<SQLCdmColumn> columns)
+        {
+            var insertColumnsScript = string.Join(", ", columns.Select(c => c.ColumnName));
+
+            return insertColumnsScript;
+        }
+
+        private string GetInsertValuesList(IEnumerable<SQLCdmColumn> columns, string sourceAlias = "src")
+        {
+            var insertValuesScript = string.Join(", ", columns.Select(c => $"{sourceAlias}.{c.ColumnName}"));
+
+            return insertValuesScript;
         }
 
         #endregion
