@@ -15,22 +15,23 @@ namespace RecordVault.Functions
         private readonly ILogger<CDMUtilFunction> _logger;
         private readonly ICDMService _cdmService;
         private readonly ISQLSchemaManagementService _sqlSchemaManagementService;
-        private readonly ICSVProcessingService _csvProcessingService;
-        private readonly IAzureStorageAccountPersistence _azureStorageAccountPersistence;
+        private readonly IDataSyncService _dataSyncService; 
+        private readonly ISQLPersistence _sqlPersistence;
 
         public CDMUtilFunction(
             ILogger<CDMUtilFunction> logger,
             ICDMService cdmService,
             SQLSchemaManagementFactory sqlSchemaManagementFactory,
-            ICSVProcessingService csvProcessingService,
-            IAzureStorageAccountPersistence azureStorageAccountPersistence
+            IAzureStorageAccountPersistence azureStorageAccountPersistence,
+            IDataSyncService dataSyncService,
+            SQLPersistenceFactory sqlPersistenceFactory
         )
         {
             _logger = logger;
             _cdmService = cdmService;
             _sqlSchemaManagementService = sqlSchemaManagementFactory.GetSQLSchemaManagementService();
-            _csvProcessingService = csvProcessingService;
-            _azureStorageAccountPersistence = azureStorageAccountPersistence;
+            _dataSyncService = dataSyncService;
+            _sqlPersistence = sqlPersistenceFactory.GetSQLPersistence();
         }
 
         [Function("CDMUtilFunction")]
@@ -38,7 +39,7 @@ namespace RecordVault.Functions
         {
             // TODO This is a test function, remove this later
 
-            var url = Environment.GetEnvironmentVariable("CDMManifestURL");
+            var url = Environment.GetEnvironmentVariable("CDMManifestURL") ?? "";
             var fileURL = "https://testjaydenfiledev.blob.core.windows.net/dataverse-harrisfarmua-unq38184a8797ecee119046002248932/2024-10-10T00.29.50Z/inventtable/2024.csv";
 
             var sqlMetadata = await _cdmService.GetCDMEntityMetadata(url, "inventtable");
@@ -51,11 +52,14 @@ namespace RecordVault.Functions
 
                 _sqlSchemaManagementService.CreateOrUpdateTable(stgTable);
 
-                var storageURL = new AzureStorageURL(fileURL);
+                var sqlConnection = _sqlPersistence.GetSQLConnection();
+                _sqlPersistence.TruncateTable(stgTable.TableName, sqlConnection);
 
-                var streamReader = await _azureStorageAccountPersistence.GetStreamReaderFromURL(storageURL);
+                await _dataSyncService.SyncStorageAccountFile(fileURL);
 
-                _csvProcessingService.CSVStreamReaderToSQL(streamReader, stgTable.TableName);
+                var mergeScript = _sqlSchemaManagementService.GenerateMergeCode(table, stgTable);
+
+                _sqlPersistence.ExecuteNonQuery(mergeScript, sqlConnection);
             }
 
             return new OkObjectResult("Welcome to Azure Functions!");

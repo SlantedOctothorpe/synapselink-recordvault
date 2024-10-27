@@ -83,6 +83,12 @@ namespace RecordVault.Infrastructure.Persistence
             sqlConnection.Close();
         }
 
+        public void TruncateTable(string tableName, IDbConnection connection)
+        {
+            var truncateScript = $"TRUNCATE TABLE {tableName}";
+            ExecuteNonQuery(truncateScript, connection);
+        }
+
         public async Task InsertDataAsync(string tableName, IDbConnection connection, IDataReader dataReader)
         {
             var sqlConnection = (SqlConnection)connection;

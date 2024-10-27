@@ -34,7 +34,13 @@
 
         public string GetBlobParentFolderName()
         {
-            var folders = BlobFolder.Split("/");
+            if (BlobFolder == "")
+            {
+                return "";
+            }
+
+            var folderString = BlobFolder.Trim().EndsWith("/") ? BlobFolder.Trim()[..(BlobFolder.Length - 1)] : BlobFolder.Trim();
+            var folders = folderString.Split("/");
             var parentName = folders.Length > 1 ? folders[folders.Length - 1] : folders[0];
             return parentName;
         }

@@ -24,6 +24,8 @@ namespace RecordVault.Domain.Persistence
 
         void ExecuteNonQuery(string query, IDbConnection connection);
 
+        void TruncateTable(string tableName, IDbConnection connection);
+
         Task InsertDataAsync(string tableName, IDbConnection connection, IDataReader dataReader);
         Task InsertDataAsync(string tableName, IDbConnection connection, List<object[]> batch);
 

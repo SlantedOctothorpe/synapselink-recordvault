@@ -1,4 +1,6 @@
 ﻿using Microsoft.Extensions.Logging;
+
+using RecordVault.Application.Factories;
 using RecordVault.Domain.Persistence;
 using RecordVault.Domain.Services;
 using RecordVault.Domain.ValueObjects;
@@ -35,10 +37,6 @@ namespace RecordVault.Application.Services
 
             var stagingTableName =  $"{stagingPrefix}{cdmEntity}";
 
-            // Get CDMService to return SQL statements
-
-            // Execute SQL statements
-
             using var stream = await _azureStorageAccountPersistence.GetStreamFromURL(storageURL);
 
             var sqlConnectionString = Environment.GetEnvironmentVariable("RecodVaultDBConnectionString") ?? "";
@@ -47,7 +45,6 @@ namespace RecordVault.Application.Services
             var fileType = DetermineFileType(fileURL);
 
             await _fileProcessingService.ProcessFileToSQL(stream, fileType, stagingTableName, sqlConnectionString, sqlType);
-
 
             // loop here?
 
