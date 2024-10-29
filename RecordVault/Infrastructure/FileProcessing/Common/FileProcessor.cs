@@ -37,9 +37,10 @@ public class FileProcessor : IFileProcessingService
         var sqlTableSchema = sqlPersistence.GetSQLColumnSchema(tableName, sqlConnection);
 
         var fileReader = _fileReaderFactory.GetFileReader(fileType);
-        var dataReader = await fileReader.ReadAsync(fileStream, sqlTableSchema);
 
-        await ProcessDataReaderToSQL(dataReader, tableName, sqlConnection, sqlPersistence);
+        // We retrieve a streaming reader to eventually pass to the producer.
+        await using var streamingReader = await fileReader.GetStreamingReaderAsync(fileStream, sqlTableSchema);
+        await ProcessDataReaderToSQL(streamingReader, tableName, sqlConnection, sqlPersistence);
     }
 
     private async Task ProcessDataReaderToSQL(IDataReader dataReader, string tableName, IDbConnection sqlConnection, ISQLPersistence sqlPersistence)

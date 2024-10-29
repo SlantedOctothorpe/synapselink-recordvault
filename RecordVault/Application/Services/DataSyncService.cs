@@ -37,14 +37,14 @@ namespace RecordVault.Application.Services
 
             var stagingTableName =  $"{stagingPrefix}{cdmEntity}";
 
-            using var stream = await _azureStorageAccountPersistence.GetStreamFromURL(storageURL);
+            using var blobStream = await _azureStorageAccountPersistence.GetStreamFromURL(storageURL);
 
             var sqlConnectionString = Environment.GetEnvironmentVariable("RecodVaultDBConnectionString") ?? "";
             var sqlType = Environment.GetEnvironmentVariable("RecodVaultDBType") ?? "";
 
             var fileType = DetermineFileType(fileURL);
 
-            await _fileProcessingService.ProcessFileToSQL(stream, fileType, stagingTableName, sqlConnectionString, sqlType);
+            await _fileProcessingService.ProcessFileToSQL(blobStream, fileType, stagingTableName, sqlConnectionString, sqlType);
 
             // loop here?
 

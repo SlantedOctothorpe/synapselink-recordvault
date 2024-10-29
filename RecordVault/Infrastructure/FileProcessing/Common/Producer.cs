@@ -20,17 +20,18 @@ public class Producer : IProducer
         try
         {
             var batch = new List<object[]>(BatchSize);
-            while (await Task.Run(() => dataReader.Read()))
+            while (await Task.Run(() => dataReader.Read())) // This is where streaming happens
             {
                 var row = new object[dataReader.FieldCount];
                 dataReader.GetValues(row);
                 batch.Add(row);
                 if (batch.Count >= BatchSize)
                 {
-                    dataQueue.Add(batch);
+                    dataQueue.Add(batch); // When batch is full, add to queue
                     batch = new List<object[]>(BatchSize);
                 }
             }
+            // Add any remaining rows
             if (batch.Count > 0)
             {
                 dataQueue.Add(batch);
@@ -39,10 +40,29 @@ public class Producer : IProducer
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error producing data");
+            throw;
         }
         finally
         {
-            dataQueue.CompleteAdding();
+            try
+            {
+                dataQueue.CompleteAdding();
+
+                if (dataReader is IStreamingDataReader streamingReader)
+                {
+                    await streamingReader.DisposeAsync();
+                    _logger.LogInformation("Streaming reader disposed asynchronously");
+                }
+                else
+                {
+                    dataReader.Dispose();
+                    _logger.LogInformation("Data reader disposed");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error disposing reader");
+            }
         }
     }
 }
