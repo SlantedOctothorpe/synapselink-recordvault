@@ -84,7 +84,7 @@ namespace RecordVault.Application.Services
             var insertColumnList = GetInsertColumnList(baseTable.Columns);
             var insertValuesList = GetInsertValuesList(baseTable.Columns);
 
-            var mergeDataWhereClause = containsIsDeleteColumn ? " WHERE IsDelete = 0" : "";
+            var mergeDataWhereClause = containsIsDeleteColumn ? " WHERE IsDelete = 0 OR IsDelete IS NULL" : "";
 
             mergeCode.AppendLine("WITH mergeData AS (");
             mergeCode.AppendLine($"SELECT *, ROW_NUMBER() OVER (PARTITION BY {rowNumPartitionByColumnList} ORDER BY {rowNumOrderByColumnList}) rowNum FROM {stagingTableName}{mergeDataWhereClause}");
@@ -105,14 +105,16 @@ namespace RecordVault.Application.Services
             {
                 mergeCode.AppendLine("");
 
+                var mergeDateColumn = GetMergeModifiedOnColumn(baseTable.Columns);
+                var versionColumn = GetMergeVersionColumn(baseTable.Columns);
+
                 // Only update IsDelete based on the latest change (should be deleted)
                 mergeCode.AppendLine("WITH deleteData AS (");
-                mergeCode.AppendLine($"SELECT *, ROW_NUMBER() OVER (PARTITION BY {rowNumPartitionByColumnList} ORDER BY {rowNumOrderByColumnList}) rowNum FROM {stagingTableName}");
+                mergeCode.AppendLine($"SELECT *, ROW_NUMBER() OVER (PARTITION BY {rowNumPartitionByColumnList} ORDER BY {rowNumOrderByColumnList}) rowNum FROM {stagingTableName} WHERE src.IsDelete = 1");
                 mergeCode.AppendLine(")");
-                mergeCode.AppendLine("UPDATE tgt SET IsDelete = src.IsDelete");
+                mergeCode.AppendLine($"UPDATE tgt SET IsDelete = src.IsDelete, {mergeDateColumn} = ISNULL(src.{mergeDateColumn}, tgt.{mergeDateColumn}), {versionColumn} = ISNULL(src.{versionColumn}, tgt.{versionColumn})");
                 mergeCode.AppendLine($"FROM {baseTableName} tgt");
                 mergeCode.AppendLine($"JOIN deleteData src ON {sourceJoinColumnList} AND src.rowNum = 1");
-                mergeCode.AppendLine("WHERE src.IsDelete = 1");
             }
 
             string mergeCodeOutput = mergeCode.ToString();
@@ -338,7 +340,7 @@ namespace RecordVault.Application.Services
         private string GetSourceJoinColumnList(IEnumerable<SQLCdmColumn> columns, string targetAlias = "tgt", string sourceAlias = "src")
         {
             var identityColumns = GetMergeIdentityColumns(columns);
-            if (!identityColumns.Any())
+            if (identityColumns.Count == 0)
             {
                 // No valid column found log error
                 // TODO: Log error
@@ -370,22 +372,24 @@ namespace RecordVault.Application.Services
 
         private List<SQLCdmColumn> GetMergeIdentityColumns(IEnumerable<SQLCdmColumn> columns)
         {
-            var identityColumn = columns.FirstOrDefault(c =>
-                string.Equals(c.ColumnName, "id", StringComparison.OrdinalIgnoreCase)
-                || string.Equals(c.ColumnName, "recid", StringComparison.OrdinalIgnoreCase)
-            );
+            var identityColumns = new List<SQLCdmColumn>();
 
-            if (identityColumn == null)
+            // Try to find id first, then recid
+            var selectedColumn = columns
+                .FirstOrDefault(c => c.ColumnName.Equals("id", StringComparison.OrdinalIgnoreCase)) ??
+                columns.FirstOrDefault(c => c.ColumnName.Equals("recid", StringComparison.OrdinalIgnoreCase));
+
+            if (selectedColumn != null)
+            {
+                identityColumns.Add(selectedColumn);
+            }
+
+            if (identityColumns.Count == 0)
             {
                 // No valid column found log error
                 // TODO: Log error
                 return [];
             }
-
-            var identityColumns = new List<SQLCdmColumn>
-            {
-                identityColumn
-            };
 
             return identityColumns;
         }

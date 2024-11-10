@@ -40,22 +40,63 @@ namespace RecordVault.Functions
             // TODO This is a test function, remove this later
 
             var url = Environment.GetEnvironmentVariable("CDMManifestURL") ?? "";
-            var fileURL = "https://testjaydenfiledev.blob.core.windows.net/dataverse-harrisfarmua-unq38184a8797ecee119046002248932/2024-10-10T00.29.50Z/inventtable/2024.csv";
+            var fileURLs = new Dictionary<string, List<string>>
+            {
+                { "pricediscgroup",
+                    new List<string> {
+                        "https://testjaydenfiledev.blob.core.windows.net/dataverse-harrisfarmua-unq38184a8797ecee119046002248932/2024-10-28T11.43.37Z/pricediscgroup/1900.csv",
+                        //"https://testjaydenfiledev.blob.core.windows.net/dataverse-harrisfarmua-unq38184a8797ecee119046002248932/2024-10-29T23.43.36Z/pricediscgroup/1900.csv",
+                        //"https://testjaydenfiledev.blob.core.windows.net/dataverse-harrisfarmua-unq38184a8797ecee119046002248932/2024-10-29T23.43.36Z/pricediscgroup/1.csv"
+                     }
+                },
+                //{ "inventtable",
+                //    new List<string> {
+                //        "https://testjaydenfiledev.blob.core.windows.net/dataverse-harrisfarmua-unq38184a8797ecee119046002248932/2024-10-30T12.43.37Z/inventtable/2023.csv"
+                //    }
+                //}
+            };
+            //var fileURL = "https://testjaydenfiledev.blob.core.windows.net/dataverse-harrisfarmua-unq38184a8797ecee119046002248932/2024-10-28T11.43.37Z/pricediscgroup/1900.csv";
+            //var fileURL = "https://testjaydenfiledev.blob.core.windows.net/dataverse-harrisfarmua-unq38184a8797ecee119046002248932/2024-10-29T23.43.36Z/pricediscgroup/1900.csv";
+            //var fileURL = "https://testjaydenfiledev.blob.core.windows.net/dataverse-harrisfarmua-unq38184a8797ecee119046002248932/2024-10-29T23.43.36Z/pricediscgroup/1.csv";
+            //var fileURL = "https://testjaydenfiledev.blob.core.windows.net/dataverse-harrisfarmua-unq38184a8797ecee119046002248932/2024-10-30T12.43.37Z/inventtable/2023.csv";
 
-            var sqlMetadata = await _cdmService.GetCDMEntityMetadata(url, "inventtable");
+            //var sqlMetadata = await _cdmService.GetCDMEntityMetadata(url, "pricediscgroup");
+            //var sqlMetadata = await _cdmService.GetCDMEntityMetadata(url, "inventtable");
+            var sqlMetadata = await _cdmService.GetCDMEntityMetadata(url);
+
+            var tableList = new List<SqlCdmTable>();
 
             foreach (var table in sqlMetadata)
             {
+                //if (!table.TableName.Contains("pricediscgroup") && !table.TableName.Contains("inventtable"))
+                if (!table.TableName.Contains("pricediscgroup"))
+                {
+                    continue;
+                }
+
                 var stgTable = table.CopyAsStagingTable();
 
                 _sqlSchemaManagementService.CreateOrUpdateTable(table);
 
                 _sqlSchemaManagementService.CreateOrUpdateTable(stgTable);
 
+                tableList.Add(table);
+
+            }
+
+            foreach (var table in tableList)
+            {
+                var tableUrls = fileURLs[table.TableName];
+
+                var stgTable = table.CopyAsStagingTable();
+
                 var sqlConnection = _sqlPersistence.GetSQLConnection();
                 _sqlPersistence.TruncateTable(stgTable.TableName, sqlConnection);
 
-                await _dataSyncService.SyncStorageAccountFile(fileURL);
+                foreach (var fileURL in tableUrls)
+                {
+                    await _dataSyncService.SyncStorageAccountFile(fileURL);
+                }
 
                 var mergeScript = _sqlSchemaManagementService.GenerateMergeCode(table, stgTable);
 

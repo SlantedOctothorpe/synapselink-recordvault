@@ -132,7 +132,9 @@ namespace RecordVault.Application.Services
 
                 var columnName = cdmAttribute.Name;
                 var columnType = GetCdmAttributeDataType(cdmAttribute);
-                var columnNullable = cdmAttribute.IsNullable;
+                //var columnNullable = cdmAttribute.IsNullable;
+                var columnNullable = true;
+
                 var columnMaxLength = GetCdmAttributeMaxLength(cdmAttribute);
                 var columnPrecision = GetCdmAttributeDecimalPrecision(cdmAttribute);
                 var columnScale = GetCdmAttributeDecimalScale(cdmAttribute);
