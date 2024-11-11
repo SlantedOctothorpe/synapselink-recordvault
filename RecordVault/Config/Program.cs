@@ -34,6 +34,7 @@ var host = new HostBuilder()
         // Application Services
         services.AddTransient<ICDMService, CDMService>();
         services.AddTransient<IDataSyncService, DataSyncService>();
+        services.AddTransient<IEntitySyncService, EntitySyncService>();
 
         // File Processing
         services.AddScoped<IFileProcessingService, FileProcessor>();

@@ -8,6 +8,7 @@
     "AzureStorageAccountName": "",
     "AzureStorageAccountAccessKey": "",
     "CDMManifestURL": "",
+    "AzureStorageBusConnectionString": "",
 
     "RecodVaultDBType": "SQLServer",
     "RecordVaultDBConnectionString": "",

@@ -23,11 +23,6 @@ namespace RecordVault.Application.Services
             return storageURL.GetBlobParentFolderName();
         }
 
-        public List<string> GetCDMEntityList(string manifestURL = "")
-        {
-            throw new NotImplementedException();
-        }
-
         public async Task<IEnumerable<SqlCdmTable>> GetCDMEntityMetadata(string manifestURL = "", string singleEntityName = "")
         {
             // TODO First attempt using hard coded values
