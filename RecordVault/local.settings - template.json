@@ -1,0 +1,17 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated",
+
+    "AzureTenantId": "",
+    "AzureStorageAccountName": "",
+    "AzureStorageAccountAccessKey": "",
+    "CDMManifestURL": "",
+    "AzureStorageBusConnectionString": "",
+
+    "RecodVaultDBType": "SQLServer",
+    "RecordVaultDBConnectionString": "",
+    "RecordVaultDBStagingTablePrefix": "sysStaging_"
+  }
+}

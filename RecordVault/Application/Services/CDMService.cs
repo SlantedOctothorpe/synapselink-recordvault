@@ -23,11 +23,6 @@ namespace RecordVault.Application.Services
             return storageURL.GetBlobParentFolderName();
         }
 
-        public List<string> GetCDMEntityList(string manifestURL = "")
-        {
-            throw new NotImplementedException();
-        }
-
         public async Task<IEnumerable<SqlCdmTable>> GetCDMEntityMetadata(string manifestURL = "", string singleEntityName = "")
         {
             // TODO First attempt using hard coded values
@@ -132,7 +127,9 @@ namespace RecordVault.Application.Services
 
                 var columnName = cdmAttribute.Name;
                 var columnType = GetCdmAttributeDataType(cdmAttribute);
-                var columnNullable = cdmAttribute.IsNullable;
+                //var columnNullable = cdmAttribute.IsNullable;
+                var columnNullable = true;
+
                 var columnMaxLength = GetCdmAttributeMaxLength(cdmAttribute);
                 var columnPrecision = GetCdmAttributeDecimalPrecision(cdmAttribute);
                 var columnScale = GetCdmAttributeDecimalScale(cdmAttribute);

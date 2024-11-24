@@ -6,6 +6,6 @@ namespace RecordVault.Domain.Services
     {
         public void CreateOrUpdateTable(SqlCdmTable table);
 
-        public void CreateOrUpdateMergeCode(SqlCdmTable originalTable, SqlCdmTable stagingTable);
+        public string GenerateMergeCode(SqlCdmTable baseTable, SqlCdmTable stagingTable);
     }
 }

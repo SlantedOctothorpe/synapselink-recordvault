@@ -55,9 +55,70 @@ namespace RecordVault.Application.Services
             }
         }
 
-        public void CreateOrUpdateMergeCode(SqlCdmTable originalTable, SqlCdmTable stagingTable)
+        public string GenerateMergeCode(SqlCdmTable baseTable, SqlCdmTable stagingTable)
         {
-            throw new NotImplementedException();
+            var mergeCode = new StringBuilder();
+
+            var baseTableName = baseTable.TableName;
+            var stagingTableName = stagingTable.TableName;
+
+            var containsIsDeleteColumn = baseTable.Columns.Any(c => string.Equals(c.ColumnName, "isdelete", StringComparison.OrdinalIgnoreCase));
+
+            var rowNumPartitionByColumnList = GetRowNumPartitionByColumnList(baseTable.Columns);
+            var rowNumOrderByColumnList = GetRowNumOrderByColumnList(baseTable.Columns);
+
+            var sourceJoinColumnList = GetSourceJoinColumnList(baseTable.Columns);
+            var matchedConditionColumnList = GetMatchedConditionColumnList(baseTable.Columns);
+            
+            if (rowNumPartitionByColumnList.IsNullOrEmpty()
+                || rowNumOrderByColumnList.IsNullOrEmpty()
+                || sourceJoinColumnList.IsNullOrEmpty()
+                || matchedConditionColumnList.IsNullOrEmpty())
+            {
+                // No valid column found log error
+                // TODO: Log error
+                return "";
+            }
+
+            var updateColumnList = GetUpdateColumnList(baseTable.Columns);
+            var insertColumnList = GetInsertColumnList(baseTable.Columns);
+            var insertValuesList = GetInsertValuesList(baseTable.Columns);
+
+            var mergeDataWhereClause = containsIsDeleteColumn ? " WHERE IsDelete = 0 OR IsDelete IS NULL" : "";
+
+            mergeCode.AppendLine("WITH mergeData AS (");
+            mergeCode.AppendLine($"SELECT *, ROW_NUMBER() OVER (PARTITION BY {rowNumPartitionByColumnList} ORDER BY {rowNumOrderByColumnList}) rowNum FROM {stagingTableName}{mergeDataWhereClause}");
+            //mergeCode.AppendLine($"SELECT *, ROW_NUMBER() OVER (PARTITION BY Id ORDER BY versionnumber DESC, SinkModifiedOn DESC) rowNum FROM {stagingTableName} WHERE IsDelete = 0");
+            mergeCode.AppendLine(")");
+            mergeCode.AppendLine($"MERGE INTO {baseTableName} AS tgt");
+            mergeCode.AppendLine($"USING mergeData AS src ON {sourceJoinColumnList} AND src.rowNum = 1");
+            //mergeCode.AppendLine($"USING mergeData AS src ON tgt.Id = src.Id AND src.rowNum = 1");
+            mergeCode.AppendLine($"WHEN MATCHED AND {matchedConditionColumnList} THEN");
+            //mergeCode.AppendLine("WHEN MATCHED AND tgt.SinkModifiedOn <> src.SinkModifiedOn THEN");
+            mergeCode.AppendLine("UPDATE SET");
+            mergeCode.AppendLine(updateColumnList);
+            mergeCode.AppendLine("WHEN NOT MATCHED BY TARGET THEN");
+            mergeCode.AppendLine($"INSERT ({insertColumnList})");
+            mergeCode.AppendLine($"VALUES ({insertValuesList});");
+
+            if (containsIsDeleteColumn)
+            {
+                mergeCode.AppendLine("");
+
+                var mergeDateColumn = GetMergeModifiedOnColumn(baseTable.Columns);
+                var versionColumn = GetMergeVersionColumn(baseTable.Columns);
+
+                // Only update IsDelete based on the latest change (should be deleted)
+                mergeCode.AppendLine("WITH deleteData AS (");
+                mergeCode.AppendLine($"SELECT *, ROW_NUMBER() OVER (PARTITION BY {rowNumPartitionByColumnList} ORDER BY {rowNumOrderByColumnList}) rowNum FROM {stagingTableName} WHERE IsDelete = 1");
+                mergeCode.AppendLine(")");
+                mergeCode.AppendLine($"UPDATE tgt SET IsDelete = src.IsDelete, {mergeDateColumn} = ISNULL(src.{mergeDateColumn}, tgt.{mergeDateColumn}), {versionColumn} = ISNULL(src.{versionColumn}, tgt.{versionColumn})");
+                mergeCode.AppendLine($"FROM {baseTableName} tgt");
+                mergeCode.AppendLine($"JOIN deleteData src ON {sourceJoinColumnList} AND src.rowNum = 1");
+            }
+
+            string mergeCodeOutput = mergeCode.ToString();
+            return mergeCodeOutput;
         }
 
         #region Private Methods
@@ -223,23 +284,15 @@ namespace RecordVault.Application.Services
                 var dataType = (string)dataTypeField;
 
                 var columnSizeField = row["ColumnSize"];
-                //var maxLengthResult = int.TryParse((string)columnSizeField, out var maxLenOut);
-                //var maxLength = maxLengthResult ? maxLenOut : -1;
                 var maxLength = (int)columnSizeField;
 
                 var numericPrecisionField = row["NumericPrecision"];
-                //var precisionResult = int.TryParse((string)numericPrecisionField, out var precisionOut);
-                //var precision = precisionResult ? precisionOut : 0;
                 var precision = Convert.ToInt32(numericPrecisionField);
 
                 var scaleField = row["NumericScale"];
-                //var scaleResult = int.TryParse((string)scaleField, out var scaleOut);
-                //var scale = scaleResult ? scaleOut : 0;
                 var scale = Convert.ToInt32(scaleField);
 
                 var isNullableField = row["AllowDBNull"];
-                //var isNullableResult = bool.TryParse((string)isNullableField, out var isNullableOut);
-                //var isNullable = isNullableResult ? isNullableOut : true;
                 var isNullable = (bool)isNullableField;
 
                 var sqlColumn = new SQLColumn(columnName, dataType, isNullable, maxLength, precision, scale);
@@ -247,6 +300,156 @@ namespace RecordVault.Application.Services
             }
 
             return columns;
+        }
+
+        private string GetRowNumPartitionByColumnList(IEnumerable<SQLCdmColumn> columns)
+        {
+            var identityColumns = GetMergeIdentityColumns(columns);
+            var partitionByColumns = identityColumns.Select(c => c.ColumnName);
+
+            if (!partitionByColumns.Any())
+            {
+                // No valid column found log error
+                // TODO: Log error
+                return "";
+            }
+
+            var partitionByColumnList = string.Join(", ", partitionByColumns);
+            return partitionByColumnList;
+        }
+
+        private string GetRowNumOrderByColumnList(IEnumerable<SQLCdmColumn> columns)
+        {
+            // Current ORDER BY approach uses one version column and one modified date column
+            // This can be extended to support different version columns and modified date columns
+
+            var versionColumn = GetMergeVersionColumn(columns);
+            var modifiedDateColumn = GetMergeModifiedOnColumn(columns);
+
+            if (versionColumn.IsNullOrEmpty() || modifiedDateColumn.IsNullOrEmpty())
+            {
+                // No valid column found log error
+                // TODO: Log error
+                return "";
+            }
+
+            var orderByColumnList = $"{versionColumn} DESC, {modifiedDateColumn} DESC";
+            return orderByColumnList;
+        }
+
+        private string GetSourceJoinColumnList(IEnumerable<SQLCdmColumn> columns, string targetAlias = "tgt", string sourceAlias = "src")
+        {
+            var identityColumns = GetMergeIdentityColumns(columns);
+            if (identityColumns.Count == 0)
+            {
+                // No valid column found log error
+                // TODO: Log error
+                return "";
+            }
+
+            var joinColumnsScript = string.Join(" AND ", identityColumns.Select(c => $"{targetAlias}.{c.ColumnName} = {sourceAlias}.{c.ColumnName}"));
+
+            return joinColumnsScript;
+        }
+
+        private string GetMatchedConditionColumnList(IEnumerable<SQLCdmColumn> columns, string targetAlias = "tgt", string sourceAlias = "src")
+        {
+            var versionColumn = GetMergeVersionColumn(columns);
+            var modifiedDateColumn = GetMergeModifiedOnColumn(columns);
+
+            if (versionColumn.IsNullOrEmpty() || modifiedDateColumn.IsNullOrEmpty())
+            {
+                // No valid column found log error
+                // TODO: Log error
+                return "";
+            }
+
+            var matchedConditionColumnsScript = $"{targetAlias}.{versionColumn} <> {sourceAlias}.{versionColumn} OR {targetAlias}.{modifiedDateColumn} <> {sourceAlias}.{modifiedDateColumn}";
+            //var matchedConditionColumnsScript = string.Join(" OR ", columns.Select(c => $"{targetAlias}.{c.ColumnName} <> {sourceAlias}.{c.ColumnName}"));
+
+            return matchedConditionColumnsScript;
+        }
+
+        private List<SQLCdmColumn> GetMergeIdentityColumns(IEnumerable<SQLCdmColumn> columns)
+        {
+            var identityColumns = new List<SQLCdmColumn>();
+
+            // Try to find id first, then recid
+            var selectedColumn = columns
+                .FirstOrDefault(c => c.ColumnName.Equals("id", StringComparison.OrdinalIgnoreCase))
+                ?? columns.FirstOrDefault(c => c.ColumnName.Equals("recid", StringComparison.OrdinalIgnoreCase));
+
+            if (selectedColumn != null)
+            {
+                identityColumns.Add(selectedColumn);
+            }
+
+            if (identityColumns.Count == 0)
+            {
+                // No valid column found log error
+                // TODO: Log error
+                return [];
+            }
+
+            return identityColumns;
+        }
+
+        private string GetMergeVersionColumn(IEnumerable<SQLCdmColumn> columns)
+        {
+            var selectedColumn = columns
+                .FirstOrDefault(c => c.ColumnName.Equals("versionnumber", StringComparison.OrdinalIgnoreCase))
+                ?? columns.FirstOrDefault(c => c.ColumnName.Equals("sysrowversion", StringComparison.OrdinalIgnoreCase));
+
+            var versionColumn = selectedColumn != null ? selectedColumn.ColumnName : "";
+
+            if (versionColumn.IsNullOrEmpty())
+            {
+                // No valid column found log error
+                // TODO: Log error
+                return "";
+            }
+
+            return versionColumn ?? "";
+        }
+
+        private string GetMergeModifiedOnColumn(IEnumerable<SQLCdmColumn> columns)
+        {
+            var selectedColumn = columns
+                .FirstOrDefault(c => c.ColumnName.Equals("sinkmodifiedon", StringComparison.OrdinalIgnoreCase))
+                ?? columns.FirstOrDefault(c => c.ColumnName.Equals("modifiedon", StringComparison.OrdinalIgnoreCase))
+                ?? columns.FirstOrDefault(c => c.ColumnName.Equals("modifieddatetime", StringComparison.OrdinalIgnoreCase));
+
+            var modifiedOnColumn = selectedColumn != null ? selectedColumn.ColumnName : "";
+
+            if (modifiedOnColumn.IsNullOrEmpty())
+            {
+                // No valid column found log error
+                // TODO: Log error
+                return "";
+            }
+
+            return modifiedOnColumn ?? "";
+        }
+
+        private string GetUpdateColumnList(IEnumerable<SQLCdmColumn> columns, string targetAlias = "tgt", string sourceAlias = "src")
+        {
+            var updateColumnsScript = string.Join(", ", columns.Select(c => $"{targetAlias}.{c.ColumnName} = {sourceAlias}.{c.ColumnName}"));
+
+            return updateColumnsScript;
+        }
+
+        private string GetInsertColumnList(IEnumerable<SQLCdmColumn> columns)
+        {
+            var insertColumnsScript = string.Join(", ", columns.Select(c => c.ColumnName));
+
+            return insertColumnsScript;
+        }
+
+        private string GetInsertValuesList(IEnumerable<SQLCdmColumn> columns, string sourceAlias = "src")
+        {
+            var insertValuesScript = string.Join(", ", columns.Select(c => $"{sourceAlias}.{c.ColumnName}"));
+
+            return insertValuesScript;
         }
 
         #endregion

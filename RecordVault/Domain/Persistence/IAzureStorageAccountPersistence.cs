@@ -4,6 +4,6 @@ namespace RecordVault.Domain.Persistence
 {
     public interface IAzureStorageAccountPersistence
     {
-        public Task<StreamReader> GetStreamReaderFromURL(AzureStorageURL storageURL);
+        Task<Stream> GetStreamFromURL(AzureStorageURL storageURL);
     }
 }

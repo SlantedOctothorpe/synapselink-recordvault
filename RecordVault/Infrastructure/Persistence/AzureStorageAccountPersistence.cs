@@ -8,14 +8,15 @@ namespace RecordVault.Infrastructure.Persistence
 {
     public class AzureStorageAccountPersistence : IAzureStorageAccountPersistence
     {
-        public async Task<StreamReader> GetStreamReaderFromURL(AzureStorageURL storageURL)
+        public async Task<Stream> GetStreamFromURL(AzureStorageURL storageURL)
         {
             var blobServiceClient = new BlobServiceClient(storageURL.StorageAccountUri(), new DefaultAzureCredential());
             var blobContainerClient = blobServiceClient.GetBlobContainerClient(storageURL.Container);
             var blobClient = blobContainerClient.GetBlobClient(storageURL.GetBlobPath());
 
-            BlobDownloadInfo blobDownloadInfo = await blobClient.DownloadAsync();
-            return new StreamReader(blobDownloadInfo.Content);
+            var blobStream = await blobClient.OpenReadAsync();
+
+            return blobStream;
         }
     }
 }

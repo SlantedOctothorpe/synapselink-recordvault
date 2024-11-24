@@ -1,35 +1,36 @@
 ﻿using Microsoft.Extensions.Logging;
 using RecordVault.Domain.Services;
-using Sylvan.Data.Csv;
 using System.Collections.Concurrent;
+using System.Data;
 
-namespace RecordVault.Infrastructure.CSV;
+namespace RecordVault.Infrastructure.FileProcessing.Common;
 
-public class CSVProducer(ILogger<CSVProducer> logger) : ICSVProducer
+public class Producer : IProducer
 {
-    private readonly ILogger<CSVProducer> _logger = logger;
+    private readonly ILogger<Producer> _logger;
     private const int BatchSize = 1000;
 
-    public async Task ProduceAsync(StreamReader streamReader, CsvDataReaderOptions csvOptions, BlockingCollection<List<object[]>> dataQueue)
+    public Producer(ILogger<Producer> logger)
+    {
+        _logger = logger;
+    }
+
+    public async Task ProduceAsync(IDataReader dataReader, BlockingCollection<List<object[]>> dataQueue)
     {
         try
         {
-            using var csv = await CsvDataReader.CreateAsync(streamReader, csvOptions);
             var batch = new List<object[]>(BatchSize);
-
-            while (await csv.ReadAsync())
+            while (await Task.Run(() => dataReader.Read()))
             {
-                var row = new object[csv.FieldCount];
-                csv.GetValues(row);
+                var row = new object[dataReader.FieldCount];
+                dataReader.GetValues(row);
                 batch.Add(row);
-
                 if (batch.Count >= BatchSize)
                 {
                     dataQueue.Add(batch);
                     batch = new List<object[]>(BatchSize);
                 }
             }
-
             if (batch.Count > 0)
             {
                 dataQueue.Add(batch);
@@ -37,7 +38,7 @@ public class CSVProducer(ILogger<CSVProducer> logger) : ICSVProducer
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error producing CSV data");
+            _logger.LogError(ex, "Error producing data");
         }
         finally
         {
