@@ -110,7 +110,7 @@ namespace RecordVault.Application.Services
 
                 // Only update IsDelete based on the latest change (should be deleted)
                 mergeCode.AppendLine("WITH deleteData AS (");
-                mergeCode.AppendLine($"SELECT *, ROW_NUMBER() OVER (PARTITION BY {rowNumPartitionByColumnList} ORDER BY {rowNumOrderByColumnList}) rowNum FROM {stagingTableName} WHERE src.IsDelete = 1");
+                mergeCode.AppendLine($"SELECT *, ROW_NUMBER() OVER (PARTITION BY {rowNumPartitionByColumnList} ORDER BY {rowNumOrderByColumnList}) rowNum FROM {stagingTableName} WHERE IsDelete = 1");
                 mergeCode.AppendLine(")");
                 mergeCode.AppendLine($"UPDATE tgt SET IsDelete = src.IsDelete, {mergeDateColumn} = ISNULL(src.{mergeDateColumn}, tgt.{mergeDateColumn}), {versionColumn} = ISNULL(src.{versionColumn}, tgt.{versionColumn})");
                 mergeCode.AppendLine($"FROM {baseTableName} tgt");
@@ -376,8 +376,8 @@ namespace RecordVault.Application.Services
 
             // Try to find id first, then recid
             var selectedColumn = columns
-                .FirstOrDefault(c => c.ColumnName.Equals("id", StringComparison.OrdinalIgnoreCase)) ??
-                columns.FirstOrDefault(c => c.ColumnName.Equals("recid", StringComparison.OrdinalIgnoreCase));
+                .FirstOrDefault(c => c.ColumnName.Equals("id", StringComparison.OrdinalIgnoreCase))
+                ?? columns.FirstOrDefault(c => c.ColumnName.Equals("recid", StringComparison.OrdinalIgnoreCase));
 
             if (selectedColumn != null)
             {
@@ -396,12 +396,11 @@ namespace RecordVault.Application.Services
 
         private string GetMergeVersionColumn(IEnumerable<SQLCdmColumn> columns)
         {
-            var versionColumn = columns
-                .Select(c => c.ColumnName)
-                .FirstOrDefault(name =>
-                    string.Equals(name, "versionnumber", StringComparison.OrdinalIgnoreCase)
-                    || string.Equals(name, "sysrowversion", StringComparison.OrdinalIgnoreCase)
-                );
+            var selectedColumn = columns
+                .FirstOrDefault(c => c.ColumnName.Equals("versionnumber", StringComparison.OrdinalIgnoreCase))
+                ?? columns.FirstOrDefault(c => c.ColumnName.Equals("sysrowversion", StringComparison.OrdinalIgnoreCase));
+
+            var versionColumn = selectedColumn != null ? selectedColumn.ColumnName : "";
 
             if (versionColumn.IsNullOrEmpty())
             {
@@ -415,13 +414,12 @@ namespace RecordVault.Application.Services
 
         private string GetMergeModifiedOnColumn(IEnumerable<SQLCdmColumn> columns)
         {
-            var modifiedOnColumn = columns
-                .Select(c => c.ColumnName)
-                .FirstOrDefault(name =>
-                    string.Equals(name, "sinkmodifiedon", StringComparison.OrdinalIgnoreCase)
-                    || string.Equals(name, "modifiedon", StringComparison.OrdinalIgnoreCase)
-                    || string.Equals(name, "modifieddatetime", StringComparison.OrdinalIgnoreCase)
-                );
+            var selectedColumn = columns
+                .FirstOrDefault(c => c.ColumnName.Equals("sinkmodifiedon", StringComparison.OrdinalIgnoreCase))
+                ?? columns.FirstOrDefault(c => c.ColumnName.Equals("modifiedon", StringComparison.OrdinalIgnoreCase))
+                ?? columns.FirstOrDefault(c => c.ColumnName.Equals("modifieddatetime", StringComparison.OrdinalIgnoreCase));
+
+            var modifiedOnColumn = selectedColumn != null ? selectedColumn.ColumnName : "";
 
             if (modifiedOnColumn.IsNullOrEmpty())
             {
