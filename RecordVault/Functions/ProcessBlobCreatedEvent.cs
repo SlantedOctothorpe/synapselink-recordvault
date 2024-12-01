@@ -6,6 +6,8 @@ using Microsoft.Extensions.Logging;
 using RecordVault.Domain.Services;
 using RecordVault.DTOs;
 
+using System.Diagnostics;
+
 namespace RecordVault.Functions
 {
     public class ProcessBlobCreatedEvent(ILogger<ProcessBlobCreatedEvent> logger, IEntitySyncService entitySyncService)
@@ -34,11 +36,21 @@ namespace RecordVault.Functions
             // Convert the blob events to a sync package
             var syncPackages = entitySyncService.BlobCreatedEventsToSyncPackages(blobEventList);
 
+            var stopwatch = Stopwatch.StartNew();
+
             // Sync the schema
             var sqlCdmTables = await entitySyncService.SyncEntityCDMSchema(syncPackages);
 
+            stopwatch.Stop();
+            logger.LogInformation($"Schema sync took {stopwatch.ElapsedMilliseconds}ms");
+
+            stopwatch = Stopwatch.StartNew();
+
             // Sync the data
             await entitySyncService.SyncEntityData(syncPackages, sqlCdmTables);
+
+            stopwatch.Stop();
+            logger.LogInformation($"Data sync took {stopwatch.ElapsedMilliseconds}ms");
 
             var entityCount = syncPackages.Count();
             logger.LogInformation($"Successfully synced {entityCount} for {message.MessageId}");
