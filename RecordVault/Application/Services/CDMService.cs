@@ -3,6 +3,8 @@ using Microsoft.CommonDataModel.ObjectModel.Storage;
 using Microsoft.CommonDataModel.ObjectModel.Utilities.Network;
 using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
+
+using RecordVault.Domain.Enums;
 using RecordVault.Domain.Services;
 using RecordVault.Domain.ValueObjects;
 using RecordVault.Infrastructure.Persistence;
@@ -69,7 +71,6 @@ namespace RecordVault.Application.Services
         private CdmCorpusDefinition MountCdmCorpusStorage(AzureStorageURL manifestStorageURL)
         {
             var hostName = manifestStorageURL.GetDFSURL();
-            //var hostName = storageURL.StorageAccountUri().ToString();
             if (hostName.EndsWith("/"))
             {
                 hostName = hostName.Remove(hostName.Length - 1);
@@ -81,35 +82,48 @@ namespace RecordVault.Application.Services
                 rootFolder = rootFolder.Remove(rootFolder.Length - 1);
             }
 
-            var tenantId = Environment.GetEnvironmentVariable("AzureTenantId") ?? "";
-            TokenProvider msitokenProvider = new AzureTokenProvider(tenantId, hostName);
-
-            var tmpSharedKey = Environment.GetEnvironmentVariable("AzureStorageAccountAccessKey") ?? "";
-
             var cdmCorpus = new CdmCorpusDefinition();
 
-            // TODO msitoken still not working
-            //cdmCorpus.Storage.Mount("adls", new ADLSAdapter(
-            //  hostName, // Hostname.
-            //  rootFolder,
-            //  msitokenProvider // Token provider.
-            //));
 
-            cdmCorpus.Storage.Mount("adls", new ADLSAdapter(
-              hostName, // Hostname.
-              rootFolder,
-              tmpSharedKey
-            ));
+            var adlsAuthMethodStr = Environment.GetEnvironmentVariable("AzureStorageAccountAuthMethod") ?? "";
+            if (string.IsNullOrEmpty(adlsAuthMethodStr))
+            {
+                throw new ArgumentNullException("Storage Account authentication method not provided");
+            }
+
+            var adlsAuthMethod = Enum.TryParse<AzureStorageAccountAuthMethodEnum>(adlsAuthMethodStr, out var authMethodResult) ? authMethodResult : AzureStorageAccountAuthMethodEnum.ManagedIdentity;
+
+
+            if (adlsAuthMethod == AzureStorageAccountAuthMethodEnum.ManagedIdentity)
+            {
+
+                var tenantId = Environment.GetEnvironmentVariable("AzureTenantId") ?? "";
+                TokenProvider azureTokenProvider = new AzureTokenProvider(tenantId, hostName);
+                cdmCorpus.Storage.Mount("adls", new ADLSAdapter(
+                  hostName, // Hostname.
+                  rootFolder,
+                  azureTokenProvider // Token provider.
+                ));
+
+            } else if (adlsAuthMethod == AzureStorageAccountAuthMethodEnum.SharedKey)
+            {
+                var storageAccountSharedKey = Environment.GetEnvironmentVariable("AzureStorageAccountAccessKey") ?? "";
+                if (string.IsNullOrEmpty(storageAccountSharedKey))
+                {
+                    throw new ArgumentNullException("Storage Account shared access key not provided");
+                }
+
+                cdmCorpus.Storage.Mount("adls", new ADLSAdapter(
+                  hostName, // Hostname.
+                  rootFolder,
+                  storageAccountSharedKey
+                ));
+            } else
+            {
+                throw new ArgumentException($"Azure Storage Account authentication method {adlsAuthMethod} not supported");
+            }
 
             cdmCorpus.Storage.DefaultNamespace = "adls";
-
-
-            // Test Storage Adapter
-            //var pathToManifestFolder = "./";
-
-            //cdmCorpus.Storage.Mount("local", new LocalAdapter(pathToManifestFolder));
-
-            //cdmCorpus.Storage.DefaultNamespace = "local";
 
             return cdmCorpus;
         }
