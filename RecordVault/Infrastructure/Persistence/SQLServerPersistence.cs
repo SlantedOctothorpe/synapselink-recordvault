@@ -77,6 +77,7 @@ namespace RecordVault.Infrastructure.Persistence
             var command = sqlConnection.CreateCommand();
             command.CommandText = query;
             command.CommandType = CommandType.Text;
+            command.CommandTimeout = 0;
 
             sqlConnection.Open();
             command.ExecuteNonQuery();

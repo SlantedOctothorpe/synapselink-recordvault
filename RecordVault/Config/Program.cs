@@ -1,6 +1,8 @@
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+
 using RecordVault.Application.Factories;
 using RecordVault.Application.Services;
 using RecordVault.Domain.Persistence;
@@ -43,6 +45,18 @@ var host = new HostBuilder()
         services.AddScoped<FileReaderFactory>();
         services.AddScoped<IProducer, Producer>();
         services.AddScoped<IConsumer, Consumer>();
+    })
+    .ConfigureLogging(logging =>
+    {
+        logging.Services.Configure<LoggerFilterOptions>(options =>
+        {
+            LoggerFilterRule defaultRule = options.Rules.FirstOrDefault(rule => rule.ProviderName
+                == "Microsoft.Extensions.Logging.ApplicationInsights.ApplicationInsightsLoggerProvider");
+            if (defaultRule is not null)
+            {
+                options.Rules.Remove(defaultRule);
+            }
+        });
     })
     .Build();
 

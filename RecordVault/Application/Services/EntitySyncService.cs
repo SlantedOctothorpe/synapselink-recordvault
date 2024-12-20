@@ -39,7 +39,7 @@ namespace RecordVault.Application.Services
                     entitySyncPackages.Add(entitySyncPackage);
                 }
 
-                entitySyncPackage.EntityFileURLs.Add(fileURL);
+                if (!entitySyncPackage.EntityFileURLs.Contains(fileURL)) entitySyncPackage.EntityFileURLs.Add(fileURL);
             }
 
             return entitySyncPackages;
