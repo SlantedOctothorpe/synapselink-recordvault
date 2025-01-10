@@ -1,3 +1,5 @@
+using Azure.Messaging.ServiceBus;
+
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -25,6 +27,16 @@ var host = new HostBuilder()
         services.AddScoped<SQLServerPersistence>()
             .AddScoped<ISQLPersistence, SQLServerPersistence>(sp => sp.GetRequiredService<SQLServerPersistence>());
 
+        // Queue Persistence
+        var serviceBusConnectionString = Environment.GetEnvironmentVariable("AzureStorageBusConnectionString");
+        services.AddSingleton(new ServiceBusClient(serviceBusConnectionString));
+        services.AddScoped<ServiceBusQueuePersistence>();
+        services.AddScoped<QueuePersistenceFactory>();
+
+        // Queue Services
+        services.AddScoped<ServiceBusQueueService>();
+        services.AddScoped<QueueServiceFactory>();
+
         // Schema Management
         services.AddScoped<SQLSchemaManagementFactory>();
         services.AddScoped<SQLServerSchemaService>()
@@ -37,6 +49,7 @@ var host = new HostBuilder()
         services.AddTransient<ICDMService, CDMService>();
         services.AddTransient<IDataSyncService, DataSyncService>();
         services.AddTransient<IEntitySyncService, EntitySyncService>();
+        services.AddTransient<IBlobCreatedEventService, BlobCreatedServiceBusService>();
 
         // File Processing
         services.AddScoped<IFileProcessingService, FileProcessor>();

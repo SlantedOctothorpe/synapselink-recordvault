@@ -1,0 +1,16 @@
+﻿using RecordVault.DTOs;
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace RecordVault.Domain.Services
+{
+    public interface IBlobCreatedEventService
+    {
+        Task RequeueBlobCreatedWithSession(BlobCreatedEvent blobCreatedEvent);
+        Task RequeueBlobCreatedWithSessionAndProperties<T>(BlobCreatedEvent blobCreatedEvent, T originalMessage);
+    }
+}
