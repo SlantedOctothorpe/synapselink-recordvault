@@ -1,5 +1,7 @@
 ﻿using Azure.Messaging.ServiceBus;
 
+using Microsoft.Azure.Functions.Worker;
+
 using RecordVault.Domain.Persistence;
 
 using System;
@@ -61,22 +63,38 @@ namespace RecordVault.Infrastructure.Persistence
 
         public async Task CompleteMessageAsync<T, U>(T receiver, U message)
         {
-            if (receiver is not ServiceBusSessionReceiver) throw new ArgumentException("Receiver is not a ServiceBusSessionReceiver");
-            if (message is not ServiceBusReceivedMessage) throw new ArgumentException("Message is not a ServiceBusReceivedMessage");
-            var messageReceiver = receiver as ServiceBusSessionReceiver ?? throw new ArgumentException("Receiver cannot be null");
-            var sbMessage = receiver as ServiceBusReceivedMessage ?? throw new ArgumentException("Message cannot be null");
+            if (message is not ServiceBusReceivedMessage sbMessage) throw new ArgumentException("Message is not a ServiceBusReceivedMessage");
 
-            await messageReceiver.CompleteMessageAsync(sbMessage);
+            if (receiver is ServiceBusMessageActions)
+            {
+                var messageActions = receiver as ServiceBusMessageActions ?? throw new ArgumentException("Receiver cannot be null");
+                await messageActions.CompleteMessageAsync(sbMessage);
+            } else if (receiver is ServiceBusSessionReceiver)
+            {
+                var messageReceiver = receiver as ServiceBusSessionReceiver ?? throw new ArgumentException("Receiver cannot be null");
+                await messageReceiver.CompleteMessageAsync(sbMessage);
+            } else
+            {
+                throw new ArgumentException("Receiver is not a ServiceBusSessionReceiver or ServiceBusMessageActions");
+            }
         }
 
         public async Task DeadLetterMessageAsync<T, U>(T receiver, U message)
         {
-            if (receiver is not ServiceBusSessionReceiver) throw new ArgumentException("Receiver is not a ServiceBusSessionReceiver");
-            if (message is not ServiceBusReceivedMessage) throw new ArgumentException("Message is not a ServiceBusReceivedMessage");
-            var messageReceiver = receiver as ServiceBusSessionReceiver ?? throw new ArgumentException("Receiver cannot be null");
-            var sbMessage = receiver as ServiceBusReceivedMessage ?? throw new ArgumentException("Message cannot be null");
+            if (message is not ServiceBusReceivedMessage sbMessage) throw new ArgumentException("Message is not a ServiceBusReceivedMessage");
 
-            await messageReceiver.DeadLetterMessageAsync(sbMessage);
+            if (receiver is ServiceBusMessageActions)
+            {
+                var messageActions = receiver as ServiceBusMessageActions ?? throw new ArgumentException("Receiver cannot be null");
+                await messageActions.DeadLetterMessageAsync(sbMessage);
+            } else if (receiver is ServiceBusSessionReceiver)
+            {
+                var messageReceiver = receiver as ServiceBusSessionReceiver ?? throw new ArgumentException("Receiver cannot be null");
+                await messageReceiver.DeadLetterMessageAsync(sbMessage);
+            } else
+            {
+                throw new ArgumentException("Receiver is not a ServiceBusSessionReceiver or ServiceBusMessageActions");
+            }
         }
 
         #region Private Methods

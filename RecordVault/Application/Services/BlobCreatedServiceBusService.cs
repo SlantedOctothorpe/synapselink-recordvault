@@ -1,5 +1,8 @@
 ﻿using Azure.Messaging.ServiceBus;
 
+using Microsoft.Azure.Functions.Worker;
+using Microsoft.Extensions.Logging;
+
 using RecordVault.Application.Factories;
 using RecordVault.Domain.Services;
 using RecordVault.Domain.ValueObjects;
@@ -14,7 +17,7 @@ using System.Threading.Tasks;
 
 namespace RecordVault.Application.Services
 {
-    public class BlobCreatedServiceBusService(QueuePersistenceFactory queuePersistenceFactory) : IBlobCreatedEventService
+    public class BlobCreatedServiceBusService(ILogger<BlobCreatedServiceBusService> logger, QueuePersistenceFactory queuePersistenceFactory) : IBlobCreatedEventService
     {
         public async Task RequeueBlobCreatedWithSession(BlobCreatedEvent blobCreatedEvent)
         {
@@ -66,6 +69,53 @@ namespace RecordVault.Application.Services
             await SendServiceBusMessage(serviceBusMessage);
         }
 
+        public async Task<IEnumerable<BlobCreatedEvent>> SBMessagesToDeDedupedBlobCreatedEventsAsync(ServiceBusReceivedMessage[] blobCreatedMessages, ServiceBusMessageActions messageActions)
+        {
+            ArgumentNullException.ThrowIfNull(blobCreatedMessages);
+
+            if (blobCreatedMessages.Length == 0) return new List<BlobCreatedEvent>();
+
+            var queuePersistence = queuePersistenceFactory.GetQueuePersistence("servicebus");
+
+            var dedupedMessages = new List<BlobCreatedEvent>();
+            var uniqueURLs = new HashSet<string>();
+            foreach (var message in blobCreatedMessages)
+            {
+                BlobCreatedEvent? blobCreatedEvent;
+                try
+                {
+                    blobCreatedEvent = JsonSerializer.Deserialize<BlobCreatedEvent>(message.Body);
+                    if (blobCreatedEvent == null)
+                    {
+                        // If it fails to parse, the message may unprocessable
+                        logger.LogError("Failed to parse message - move to dead letter - {messageId} : {messageBody}", message.MessageId, message.Body);
+                        await queuePersistence.DeadLetterMessageAsync(messageActions, message);
+                        continue;
+                    }
+                }
+                catch
+                {
+                    logger.LogError("Failed to parse message - move to dead letter - {messageId} : {messageBody}", message.MessageId, message.Body);
+                    await queuePersistence.DeadLetterMessageAsync(messageActions, message);
+                    continue;
+                }
+
+                var blobURL = blobCreatedEvent.data.blobUrl;
+                if (uniqueURLs.Contains(blobURL))
+                {
+                    logger.LogInformation($"Duplicate message {message.MessageId} - move to dead letter");
+                    await queuePersistence.DeadLetterMessageAsync(messageActions, message);
+                    continue;
+                }
+
+                uniqueURLs.Add(blobURL);
+                dedupedMessages.Add(blobCreatedEvent);
+            }
+            return dedupedMessages;
+        }
+
+        #region Private Methods
+
         private async Task SendServiceBusMessage(ServiceBusMessage message)
         {
             var sessionAwareQueue = Environment.GetEnvironmentVariable("AzureStorageBusSessionAwareQueueName") ?? throw new Exception("SessionAwareQueueName not defined");
@@ -73,5 +123,7 @@ namespace RecordVault.Application.Services
             var queuePersistence = queuePersistenceFactory.GetQueuePersistence("servicebus");
             await queuePersistence.EnqueueComplexMessageAsync(sessionAwareQueue, message);
         }
+
+        #endregion
     }
 }
