@@ -18,7 +18,7 @@ namespace RecordVault.Application.Factories
         {
             return queueType.ToLower() switch
             {
-                "servicebux" => _serviceProvider.GetRequiredService<ServiceBusQueuePersistence>(),
+                "servicebus" => _serviceProvider.GetRequiredService<ServiceBusQueuePersistence>(),
                 _ => throw new ArgumentException($"Unsupported queue type: {queueType}", nameof(queueType))
             };
         }

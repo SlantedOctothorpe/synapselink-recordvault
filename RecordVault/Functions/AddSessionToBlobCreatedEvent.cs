@@ -15,7 +15,7 @@ namespace RecordVault.Functions
     {
         [Function(nameof(AddSessionToBlobCreatedEvent))]
         public async Task Run(
-            [ServiceBusTrigger("%AzureStorageBusPreSessionQueueName%", Connection = "AzureStorageBusConnectionString")]
+            [ServiceBusTrigger("%AzureStorageBusPreSessionQueueName%", Connection = "AzureStorageBusPreSessionConnectionString")]
             ServiceBusReceivedMessage message,
             ServiceBusMessageActions messageActions)
         {

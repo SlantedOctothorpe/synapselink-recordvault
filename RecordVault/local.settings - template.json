@@ -10,6 +10,7 @@
     "AzureStorageAccountAccessKey": "",
     "CDMManifestURL": "",
     "AzureStorageBusConnectionString": "",
+    "AzureStorageBusPreSessionConnectionString": "",
     "AzureStorageBusPreSessionQueueName": "",
     "AzureStorageBusSessionAwareQueueName": "",
 

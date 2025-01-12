@@ -4,28 +4,31 @@ using Azure.Messaging.ServiceBus;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Logging;
 
+using RecordVault.Application.Factories;
 using RecordVault.Domain.Services;
 using RecordVault.DTOs;
 
 namespace RecordVault.Functions
 {
     public class ProcessBlobCreatedEventsWithSessions(
-        ILogger<ProcessBlobCreatedEventsWithSessions> logger, IEntitySyncService entitySyncService, IQueueService queueService
-        )
+        ILogger<ProcessBlobCreatedEventsWithSessions> logger, IEntitySyncService entitySyncService, QueueServiceFactory queueServiceFactory)
     {
         [Function(nameof(ProcessBlobCreatedEventsWithSessions))]
         public async Task Run(
             [ServiceBusTrigger("%AzureStorageBusSessionAwareQueueName%", Connection = "AzureStorageBusConnectionString",
                 AutoCompleteMessages = false, IsSessionsEnabled = true)]
-            string sessionId,
-            ServiceBusSessionProcessor processor)
+            ServiceBusReceivedMessage receivedMessage,
+            ServiceBusSessionMessageActions messageActions)
         {
-            logger.LogInformation($"Starting to process messages for session: {sessionId}");
-
             try {
+                var sessionId = receivedMessage.SessionId;
+                logger.LogInformation($"Starting to process messages for session: {sessionId} from messageId: {receivedMessage.MessageId}");
+
+                var queueService = queueServiceFactory.GetQueueService("servicebus");
+
                 var sessionAwareQueueName = Environment.GetEnvironmentVariable("AzureStorageBusSessionAwareQueueName") ?? throw new Exception("SessionAwareQueueName not defined");
-                var receiver = await queueService.GetMessageReceiverForSession<ServiceBusSessionReceiver>(sessionAwareQueueName, sessionId);
-                var messages = await queueService.GetDedupedBlobCreatedSessionMessages<ServiceBusSessionReceiver, ServiceBusReceivedMessage>(receiver);
+                await using var receiver = await queueService.GetMessageReceiverForSessionAsync<ServiceBusSessionReceiver>(sessionAwareQueueName, sessionId);
+                var messages = await queueService.GetDedupedBlobCreatedSessionMessagesAsync<ServiceBusSessionReceiver, ServiceBusReceivedMessage>(receiver);
 
                 var blobEventList = new List<BlobCreatedEvent>();
                 foreach (var message in messages)
@@ -34,7 +37,7 @@ namespace RecordVault.Functions
                     if (blobEvent == null)
                     {
                         // If it fails to parse, the message may unprocessable
-                        await queueService.DeadLetterMessage(receiver, message);
+                        await queueService.DeadLetterMessageAsync(receiver, message);
                         throw new ArgumentException($"Invalid message body {message.MessageId} : {message.Body}");
                     }
 
@@ -62,6 +65,12 @@ namespace RecordVault.Functions
 
                 var entityCount = syncPackages.Count();
                 logger.LogInformation($"Successfully synced {entityCount} entit(y)(ies)");
+
+                // TODO For now assume all messages are for the same entity and all messages succeeded (should be completed)
+                foreach (var message in messages)
+                {
+                    await queueService.CompleteMessageAsync(receiver, message);
+                }
             }
             catch (Exception ex)
             {

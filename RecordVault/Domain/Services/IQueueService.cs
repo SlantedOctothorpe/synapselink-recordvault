@@ -10,14 +10,14 @@ namespace RecordVault.Domain.Services
 {
     public interface IQueueService
     {
-        Task<T> GetMessageReceiverForSession<T>(string queueName, string sessionId);
+        Task<T> GetMessageReceiverForSessionAsync<T>(string queueName, string sessionId);
 
-        Task CloseMessageReceivier<T>(T receiver);
+        Task CloseMessageReceiverAsync<T>(T receiver);
 
-        Task<IEnumerable<U>> GetDedupedBlobCreatedSessionMessages<T, U>(T receiver);
+        Task<IEnumerable<U>> GetDedupedBlobCreatedSessionMessagesAsync<T, U>(T receiver);
 
-        Task CompleteMessage<T, U>(T receiver, U message);
+        Task CompleteMessageAsync<T, U>(T receiver, U message);
 
-        Task DeadLetterMessage<T, U>(T receiver, U message);
+        Task DeadLetterMessageAsync<T, U>(T receiver, U message);
     }
 }

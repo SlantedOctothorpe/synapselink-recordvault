@@ -20,11 +20,11 @@ namespace RecordVault.Application.Factories
             _serviceProvider = serviceProvider;
         }
 
-        public IQueueService GetQueuePersistence(string queueType = "servicebus")
+        public IQueueService GetQueueService(string queueType = "servicebus")
         {
             return queueType.ToLower() switch
             {
-                "servicebux" => _serviceProvider.GetRequiredService<ServiceBusQueueService>(),
+                "servicebus" => _serviceProvider.GetRequiredService<ServiceBusQueueService>(),
                 _ => throw new ArgumentException($"Unsupported queue type: {queueType}", nameof(queueType))
             };
         }

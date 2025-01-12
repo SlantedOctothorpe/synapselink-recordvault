@@ -2,6 +2,8 @@
 
 using Microsoft.Extensions.Logging;
 
+using RecordVault.Application.Factories;
+using RecordVault.Domain.Persistence;
 using RecordVault.Domain.Services;
 using RecordVault.DTOs;
 
@@ -14,53 +16,54 @@ using System.Threading.Tasks;
 
 namespace RecordVault.Application.Services
 {
-    public class ServiceBusQueueService(ILogger<ServiceBusQueueService> logger, ServiceBusClient serviceBusClient) : IQueueService
+    public class ServiceBusQueueService(ILogger<ServiceBusQueueService> logger, QueuePersistenceFactory queuePersistenceFactory) : IQueueService
     {
-        public async Task<T> GetMessageReceiverForSession<T>(string queueName, string sessionId)
+        public async Task<T> GetMessageReceiverForSessionAsync<T>(string queueName, string sessionId)
         {
-            var receiver = await serviceBusClient.AcceptSessionAsync(queueName, sessionId);
+            var queuePersistence = queuePersistenceFactory.GetQueuePersistence("servicebus");
+            var receiver = await queuePersistence.CreateMessageReceiverForSessionAsync<T>(queueName, sessionId);
 
-            return (T) Convert.ChangeType(receiver, typeof(T));
+            return receiver;
         }
 
-        public async Task CloseMessageReceivier<T>(T receiver)
+        public async Task CloseMessageReceiverAsync<T>(T receiver)
         {
-            if (receiver is not ServiceBusSessionReceiver) throw new ArgumentException("Receiver is not a ServiceBusSessionProcessor");
-            var messageReceiver = receiver as ServiceBusSessionReceiver ?? throw new ArgumentException("Receiver cannot be null");
+            if (receiver is not ServiceBusSessionReceiver) throw new ArgumentException("Receiver is not a ServiceBusSessionReceiver");
 
-            await messageReceiver.CloseAsync();
+            var queuePersistence = queuePersistenceFactory.GetQueuePersistence("servicebus");
+            await queuePersistence.CloseMessageReceiverAsync(receiver);
         }
 
-        public async Task CompleteMessage<T, U>(T receiver, U message)
+        public async Task CompleteMessageAsync<T, U>(T receiver, U message)
         {
-            if (receiver is not ServiceBusSessionReceiver) throw new ArgumentException("Receiver is not a ServiceBusSessionProcessor");
+            if (receiver is not ServiceBusSessionReceiver) throw new ArgumentException("Receiver is not a ServiceBusSessionReceiver");
             if (message is not ServiceBusReceivedMessage) throw new ArgumentException("Message is not a ServiceBusReceivedMessage");
-            var messageReceiver = receiver as ServiceBusSessionReceiver ?? throw new ArgumentException("Receiver cannot be null");
-            var sbMessage = receiver as ServiceBusReceivedMessage ?? throw new ArgumentException("Message cannot be null");
 
-            await messageReceiver.CompleteMessageAsync(sbMessage);
+            var queuePersistence = queuePersistenceFactory.GetQueuePersistence("servicebus");
+            await queuePersistence.CompleteMessageAsync(receiver, message);
         }
 
-        public async Task DeadLetterMessage<T, U>(T receiver, U message)
+        public async Task DeadLetterMessageAsync<T, U>(T receiver, U message)
         {
-            if (receiver is not ServiceBusSessionReceiver) throw new ArgumentException("Receiver is not a ServiceBusSessionProcessor");
+            if (receiver is not ServiceBusSessionReceiver) throw new ArgumentException("Receiver is not a ServiceBusSessionReceiver");
             if (message is not ServiceBusReceivedMessage) throw new ArgumentException("Message is not a ServiceBusReceivedMessage");
-            var messageReceiver = receiver as ServiceBusSessionReceiver ?? throw new ArgumentException("Receiver cannot be null");
-            var sbMessage = receiver as ServiceBusReceivedMessage ?? throw new ArgumentException("Message cannot be null");
 
-            await messageReceiver.DeadLetterMessageAsync(sbMessage);
+            var queuePersistence = queuePersistenceFactory.GetQueuePersistence("servicebus");
+            await queuePersistence.DeadLetterMessageAsync(receiver, message);
         }
 
-        public async Task<IEnumerable<U>> GetDedupedBlobCreatedSessionMessages<T, U>(T receiver)
+        public async Task<IEnumerable<U>> GetDedupedBlobCreatedSessionMessagesAsync<T, U>(T receiver)
         {
-            if (receiver is not ServiceBusSessionReceiver) throw new ArgumentException("Receiver is not a ServiceBusSessionProcessor");
+            if (receiver is not ServiceBusSessionReceiver) throw new ArgumentException("Receiver is not a ServiceBusSessionReceiver");
             var messageReceiver = receiver as ServiceBusSessionReceiver ?? throw new ArgumentException("Receiver cannot be null");
+
+            var queuePersistence = queuePersistenceFactory.GetQueuePersistence("servicebus");
 
             var messages = new List<U>();
             var uniqueURLs = new HashSet<string>();
             while (true)
             {
-                var message = await messageReceiver.ReceiveMessageAsync(TimeSpan.FromSeconds(5));
+                var message = await queuePersistence.ReceiveMessageAsync<ServiceBusSessionReceiver, ServiceBusReceivedMessage>(messageReceiver, TimeSpan.FromSeconds(10));
                 if (message == null) break; // No more messages
                 string? blobUrl;
                 try
@@ -71,14 +74,14 @@ namespace RecordVault.Application.Services
                 catch
                 {
                     logger.LogError("Failed to parse message - move to dead letter - {messageId} : {messageBody}", message.MessageId, message.Body);
-                    await messageReceiver.DeadLetterMessageAsync(message);
+                    await queuePersistence.DeadLetterMessageAsync(messageReceiver, message);
                     continue;
                 }
 
                 if (uniqueURLs.Contains(blobUrl))
                 {
                     logger.LogInformation($"Duplicate message {message.MessageId} - move to dead letter");
-                    await messageReceiver.DeadLetterMessageAsync(message);
+                    await queuePersistence.DeadLetterMessageAsync(messageReceiver, message);
                     continue;
                 }
 
