@@ -18,6 +18,6 @@ namespace RecordVault.Domain.Services
 
         Task RequeueBlobCreatedWithSessionAndProperties<T>(BlobCreatedEvent blobCreatedEvent, T originalMessage);
 
-        Task<IEnumerable<BlobCreatedEvent>> SBMessagesToDeDedupedBlobCreatedEventsAsync(ServiceBusReceivedMessage[] blobCreatedMessages, ServiceBusMessageActions messageActions);
+        Task<(IEnumerable<BlobCreatedEvent> events, IEnumerable<ServiceBusReceivedMessage> messages)> SBMessagesToDeDedupedBlobCreatedEventsAsync(ServiceBusReceivedMessage[] blobCreatedMessages, ServiceBusMessageActions messageActions);
     }
 }

@@ -69,15 +69,16 @@ namespace RecordVault.Application.Services
             await SendServiceBusMessage(serviceBusMessage);
         }
 
-        public async Task<IEnumerable<BlobCreatedEvent>> SBMessagesToDeDedupedBlobCreatedEventsAsync(ServiceBusReceivedMessage[] blobCreatedMessages, ServiceBusMessageActions messageActions)
+        public async Task<(IEnumerable<BlobCreatedEvent> events, IEnumerable<ServiceBusReceivedMessage> messages)> SBMessagesToDeDedupedBlobCreatedEventsAsync(ServiceBusReceivedMessage[] blobCreatedMessages, ServiceBusMessageActions messageActions)
         {
             ArgumentNullException.ThrowIfNull(blobCreatedMessages);
 
-            if (blobCreatedMessages.Length == 0) return new List<BlobCreatedEvent>();
+            if (blobCreatedMessages.Length == 0) return (new List<BlobCreatedEvent>(), new List<ServiceBusReceivedMessage>());
 
             var queuePersistence = queuePersistenceFactory.GetQueuePersistence("servicebus");
 
-            var dedupedMessages = new List<BlobCreatedEvent>();
+            var dedupedEvents = new List<BlobCreatedEvent>();
+            var dedupedMessages = new List<ServiceBusReceivedMessage>();
             var uniqueURLs = new HashSet<string>();
             foreach (var message in blobCreatedMessages)
             {
@@ -109,9 +110,10 @@ namespace RecordVault.Application.Services
                 }
 
                 uniqueURLs.Add(blobURL);
-                dedupedMessages.Add(blobCreatedEvent);
+                dedupedEvents.Add(blobCreatedEvent);
+                dedupedMessages.Add(message);
             }
-            return dedupedMessages;
+            return (events: dedupedEvents, messages: dedupedMessages);
         }
 
         #region Private Methods

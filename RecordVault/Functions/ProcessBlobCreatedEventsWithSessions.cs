@@ -13,21 +13,23 @@ namespace RecordVault.Functions
     public class ProcessBlobCreatedEventsWithSessions(
         ILogger<ProcessBlobCreatedEventsWithSessions> logger,
         IEntitySyncService entitySyncService,
-        IBlobCreatedEventService blobCreatedEventService
+        IBlobCreatedEventService blobCreatedEventService,
+        QueueServiceFactory queueServiceFactory
         )
     {
         [Function(nameof(ProcessBlobCreatedEventsWithSessions))]
         public async Task Run(
             [ServiceBusTrigger("%AzureStorageBusSessionAwareQueueName%", Connection = "AzureStorageBusConnectionString",
-                IsBatched = true, IsSessionsEnabled = true)]
+                IsBatched = true, IsSessionsEnabled = true, AutoCompleteMessages = false)]
             ServiceBusReceivedMessage[] receivedMessages,
+            ServiceBusSessionMessageActions sessionMessageActions,
             ServiceBusMessageActions messageActions)
         {
             try {
                 var sessionId = receivedMessages.Length > 0 ? receivedMessages[0].SessionId : "";
-                logger.LogInformation($"Starting to process messages for session: {sessionId}");
+                logger.LogInformation($"Starting to process messages for session: {sessionId} for {receivedMessages.Length} messages");
 
-                var blobEventList = await blobCreatedEventService.SBMessagesToDeDedupedBlobCreatedEventsAsync(receivedMessages, messageActions);
+                var (blobEventList, dedupedMessages) = await blobCreatedEventService.SBMessagesToDeDedupedBlobCreatedEventsAsync(receivedMessages, messageActions);
 
                 // Convert the blob events to a sync package (each session should be only a single entity)
                 var syncPackages = entitySyncService.BlobCreatedEventsToSyncPackages(blobEventList);
@@ -50,6 +52,14 @@ namespace RecordVault.Functions
 
                 var entityCount = syncPackages.Count();
                 logger.LogInformation($"Successfully synced {entityCount} entit(y)(ies)");
+
+                // TODO assume all messages are processed successfully so can be completed
+                await sessionMessageActions.RenewSessionLockAsync();
+                var queueService = queueServiceFactory.GetQueueService("servicebus");
+                foreach (var message in dedupedMessages)
+                {
+                    await queueService.CompleteMessageAsync(messageActions, message);
+                }
             }
             catch (Exception ex)
             {

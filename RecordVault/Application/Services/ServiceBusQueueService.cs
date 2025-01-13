@@ -37,7 +37,7 @@ namespace RecordVault.Application.Services
 
         public async Task CompleteMessageAsync<T, U>(T receiver, U message)
         {
-            if (receiver is not ServiceBusSessionReceiver or ServiceBusMessageActions) throw new ArgumentException("Receiver is not a ServiceBusSessionReceiver or ServiceBusMessageActions");
+            if (receiver is not (ServiceBusSessionReceiver or ServiceBusMessageActions)) throw new ArgumentException("Receiver is not a ServiceBusSessionReceiver or ServiceBusMessageActions");
             if (message is not ServiceBusReceivedMessage) throw new ArgumentException("Message is not a ServiceBusReceivedMessage");
 
             var queuePersistence = queuePersistenceFactory.GetQueuePersistence("servicebus");
@@ -46,7 +46,7 @@ namespace RecordVault.Application.Services
 
         public async Task DeadLetterMessageAsync<T, U>(T receiver, U message)
         {
-            if (receiver is not ServiceBusSessionReceiver or ServiceBusMessageActions) throw new ArgumentException("Receiver is not a ServiceBusSessionReceiver or ServiceBusMessageActions");
+            if (receiver is not (ServiceBusSessionReceiver or ServiceBusMessageActions)) throw new ArgumentException("Receiver is not a ServiceBusSessionReceiver or ServiceBusMessageActions");
             if (message is not ServiceBusReceivedMessage) throw new ArgumentException("Message is not a ServiceBusReceivedMessage");
 
             var queuePersistence = queuePersistenceFactory.GetQueuePersistence("servicebus");
