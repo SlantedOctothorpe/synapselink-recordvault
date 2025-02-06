@@ -10,7 +10,13 @@ namespace RecordVault.Domain.Services
 {
     public interface IQueueService
     {
+        Task EnqueueAsync(string queueName, string message, string sessionId = "");
+
+        Task EnqueueComplexMessageAsync<T>(string queueName, T message);
+
         Task<T> GetMessageReceiverForSessionAsync<T>(string queueName, string sessionId);
+
+        Task<T> GetMessageReceiverForNextSessionAsync<T>(string queueName);
 
         Task CloseMessageReceiverAsync<T>(T receiver);
 

@@ -21,6 +21,7 @@ var host = new HostBuilder()
         services.AddApplicationInsightsTelemetryWorkerService();
         services.ConfigureFunctionsApplicationInsights();
         services.AddLogging();
+        services.AddHttpClient();
 
         // Persistence
         services.AddScoped<SQLPersistenceFactory>();

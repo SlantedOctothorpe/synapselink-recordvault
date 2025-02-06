@@ -2,8 +2,8 @@
   "version": "2.0",
   "extensions": {
     "serviceBus": {
-      "maxConcurrentCalls": 2,
-      "maxConcurrentSessions": 2
+      "maxConcurrentCalls": 1,
+      "maxConcurrentSessions": 1
     }
   },
   "logging": {

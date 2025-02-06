@@ -19,10 +19,30 @@ namespace RecordVault.Application.Services
 {
     public class ServiceBusQueueService(ILogger<ServiceBusQueueService> logger, QueuePersistenceFactory queuePersistenceFactory) : IQueueService
     {
+        public Task EnqueueAsync(string queueName, string message, string sessionId = "")
+        {
+            var queuePersistence = queuePersistenceFactory.GetQueuePersistence("servicebus");
+            return queuePersistence.EnqueueAsync(queueName, message, sessionId);
+        }
+
+        public Task EnqueueComplexMessageAsync<T>(string queueName, T message)
+        {
+            var queuePersistence = queuePersistenceFactory.GetQueuePersistence("servicebus");
+            return queuePersistence.EnqueueComplexMessageAsync(queueName, message);
+        }
+
         public async Task<T> GetMessageReceiverForSessionAsync<T>(string queueName, string sessionId)
         {
             var queuePersistence = queuePersistenceFactory.GetQueuePersistence("servicebus");
             var receiver = await queuePersistence.CreateMessageReceiverForSessionAsync<T>(queueName, sessionId);
+
+            return receiver;
+        }
+
+        public async Task<T> GetMessageReceiverForNextSessionAsync<T>(string queueName)
+        {
+            var queuePersistence = queuePersistenceFactory.GetQueuePersistence("servicebus");
+            var receiver = await queuePersistence.CreateMessageReceiverForNextSessionAsync<T>(queueName);
 
             return receiver;
         }

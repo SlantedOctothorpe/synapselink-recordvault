@@ -14,6 +14,8 @@ namespace RecordVault.Domain.Persistence
 
         Task<T> CreateMessageReceiverForSessionAsync<T>(string queueName, string sessionId);
 
+        Task<T> CreateMessageReceiverForNextSessionAsync<T>(string queueName);
+
         Task CloseMessageReceiverAsync<T>(T receiver);
 
         Task<U> ReceiveMessageAsync<T, U>(T receiver, TimeSpan? maxWaitTime = null);

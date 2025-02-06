@@ -41,6 +41,13 @@ namespace RecordVault.Infrastructure.Persistence
             return (T) Convert.ChangeType(receiver, typeof(T));
         }
 
+        public async Task<T> CreateMessageReceiverForNextSessionAsync<T>(string queueName)
+        {
+            var receiver = await serivceBusClient.AcceptNextSessionAsync(queueName);
+
+            return (T) Convert.ChangeType(receiver, typeof(T));
+        }
+
         public async Task CloseMessageReceiverAsync<T>(T receiver)
         {
             if (receiver is not ServiceBusSessionReceiver) throw new ArgumentException("Receiver is not a ServiceBusSessionReceiver");

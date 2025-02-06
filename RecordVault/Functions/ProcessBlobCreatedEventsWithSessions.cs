@@ -20,7 +20,8 @@ namespace RecordVault.Functions
         [Function(nameof(ProcessBlobCreatedEventsWithSessions))]
         public async Task Run(
             [ServiceBusTrigger("%AzureStorageBusSessionAwareQueueName%", Connection = "AzureStorageBusConnectionString",
-                IsBatched = true, IsSessionsEnabled = true, AutoCompleteMessages = false)]
+                //IsBatched = true, IsSessionsEnabled = true, AutoCompleteMessages = false)]
+                IsBatched = true, IsSessionsEnabled = true)]
             ServiceBusReceivedMessage[] receivedMessages,
             ServiceBusSessionMessageActions sessionMessageActions,
             ServiceBusMessageActions messageActions)
@@ -54,12 +55,12 @@ namespace RecordVault.Functions
                 logger.LogInformation($"Successfully synced {entityCount} entit(y)(ies)");
 
                 // TODO assume all messages are processed successfully so can be completed
-                await sessionMessageActions.RenewSessionLockAsync();
-                var queueService = queueServiceFactory.GetQueueService("servicebus");
-                foreach (var message in dedupedMessages)
-                {
-                    await queueService.CompleteMessageAsync(messageActions, message);
-                }
+                //await sessionMessageActions.RenewSessionLockAsync();
+                //var queueService = queueServiceFactory.GetQueueService("servicebus");
+                //foreach (var message in dedupedMessages)
+                //{
+                //    await queueService.CompleteMessageAsync(messageActions, message);
+                //}
             }
             catch (Exception ex)
             {
