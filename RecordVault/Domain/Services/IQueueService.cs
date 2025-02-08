@@ -20,6 +20,10 @@ namespace RecordVault.Domain.Services
 
         Task CloseMessageReceiverAsync<T>(T receiver);
 
+        IQueueSessionLockManager StartSessionLockRenewal<T>(T receiver);
+
+        void StopSessionLockRenewal(IQueueSessionLockManager lockManager);
+
         Task<IEnumerable<U>> GetDedupedBlobCreatedSessionMessagesAsync<T, U>(T receiver);
 
         Task CompleteMessageAsync<T, U>(T receiver, U message);

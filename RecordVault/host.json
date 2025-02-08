@@ -2,7 +2,14 @@
   "version": "2.0",
   "extensions": {
     "serviceBus": {
-      "maxConcurrentCalls": 1,
+      "clientRetryOptions": {
+        "mode": "Fixed",
+        "tryTimeout": "00:00:50",
+        "delay": "00:00:30",
+        "maxDelay": "00:01:00",
+        "maxRetries": 10
+      },
+      "maxConcurrentCalls": 4,
       "maxConcurrentSessions": 1
     }
   },

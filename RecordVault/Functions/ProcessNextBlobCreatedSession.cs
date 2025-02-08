@@ -28,22 +28,32 @@ namespace RecordVault.Functions
         {
             var processorGuid = Guid.NewGuid();
 
+            var queueService = queueServiceFactory.GetQueueService("servicebus");
+
+            ServiceBusSessionReceiver sessionReceiver = null;
             try
             {
                 LogInformationWithGuid(processorGuid, "Starting to process next session");
 
-                var queueService = queueServiceFactory.GetQueueService("servicebus");
-
                 var queueName = Environment.GetEnvironmentVariable("AzureStorageBusSessionAwareQueueName") ?? throw new Exception("AzureStorageBusSessionAwareQueueName");
 
-                var sessionReceiver = await queueService.GetMessageReceiverForNextSessionAsync<ServiceBusSessionReceiver>(queueName);
-                if (sessionReceiver == null)
+                try {
+                    sessionReceiver = await queueService.GetMessageReceiverForNextSessionAsync<ServiceBusSessionReceiver>(queueName);
+                } catch (ServiceBusException ex)
                 {
+                    LogInformationWithGuid(processorGuid, $"No sessions to process");
                     return;
                 }
 
-                var sessionId = sessionReceiver.SessionId;
+                if (sessionReceiver == null)
+                {
+                    LogInformationWithGuid(processorGuid, $"No sessions to process");
+                    return;
+                }
 
+                var sessionLockManager = queueService.StartSessionLockRenewal(sessionReceiver);
+
+                var sessionId = sessionReceiver.SessionId;
                 LogInformationWithGuid(processorGuid, $"Starting to process messages for session: {sessionId}");
 
                 var receivedMessages = await queueService.GetDedupedBlobCreatedSessionMessagesAsync<ServiceBusSessionReceiver, ServiceBusReceivedMessage>(sessionReceiver);
@@ -60,6 +70,8 @@ namespace RecordVault.Functions
                             LogErrorWithGuid(processorGuid, $"Failed to parse message - {message.MessageId} : {message.Body}");
                             continue;
                         }
+
+                        blobEventList.Add(blobCreatedEvent);
                     }
                     catch
                     {
@@ -68,33 +80,42 @@ namespace RecordVault.Functions
                     }
                 }
 
-                // Convert the blob events to a sync package (each session should be only a single entity)
-                var syncPackages = entitySyncService.BlobCreatedEventsToSyncPackages(blobEventList);
+                if (blobEventList.Count != 0)
+                {
+                    // Convert the blob events to a sync package (each session should be only a single entity)
+                    var syncPackages = entitySyncService.BlobCreatedEventsToSyncPackages(blobEventList);
 
-                var stopwatch = Stopwatch.StartNew();
+                    var stopwatch = Stopwatch.StartNew();
 
-                // Sync the schema
-                var sqlCdmTables = await entitySyncService.SyncEntityCDMSchema(syncPackages);
+                    // Sync the schema
+                    var sqlCdmTables = await entitySyncService.SyncEntityCDMSchema(syncPackages);
 
-                stopwatch.Stop();
-                LogInformationWithGuid(processorGuid, $"Schema sync took {stopwatch.ElapsedMilliseconds}ms");
+                    stopwatch.Stop();
+                    LogInformationWithGuid(processorGuid, $"Schema sync took {stopwatch.ElapsedMilliseconds}ms");
 
-                stopwatch = Stopwatch.StartNew();
+                    stopwatch = Stopwatch.StartNew();
 
-                // Sync the data
-                await entitySyncService.SyncEntityData(syncPackages, sqlCdmTables);
+                    // Sync the data
+                    await entitySyncService.SyncEntityData(syncPackages, sqlCdmTables);
 
-                stopwatch.Stop();
-                LogInformationWithGuid(processorGuid, $"Data sync took {stopwatch.ElapsedMilliseconds}ms");
+                    stopwatch.Stop();
+                    LogInformationWithGuid(processorGuid, $"Data sync took {stopwatch.ElapsedMilliseconds}ms");
 
-                var entityCount = syncPackages.Count();
-                LogInformationWithGuid(processorGuid, $"Successfully synced {entityCount} entit(y)(ies)");
+                    var entityCount = syncPackages.Count();
+                    LogInformationWithGuid(processorGuid, $"Successfully synced {entityCount} entit(y)(ies)");
+                }
+                else
+                {
+                    LogInformationWithGuid(processorGuid, "No messages to process");
+                }
 
                 // TODO assume all messages are processed successfully so can be completed
                 foreach (var message in receivedMessages)
                 {
                     await queueService.CompleteMessageAsync(sessionReceiver, message);
                 }
+
+                queueService.StopSessionLockRenewal(sessionLockManager);
             }
             catch (Exception ex)
             {
@@ -108,8 +129,13 @@ namespace RecordVault.Functions
 
                 return;
             }
-
-            return;
+            finally
+            {
+                if (sessionReceiver != null)
+                {
+                    await queueService.CloseMessageReceiverAsync(sessionReceiver);
+                }
+            }
         }
 
         private void LogInformationWithGuid(Guid guid, string message)

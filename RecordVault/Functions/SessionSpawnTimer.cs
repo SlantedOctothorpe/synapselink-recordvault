@@ -9,8 +9,7 @@ namespace RecordVault.Functions
     public class SessionSpawnTimer(ILogger<SessionSpawnTimer> logger, QueueServiceFactory queueServiceFactory)
     {
         [Function(nameof(SessionSpawnTimer))]
-        //public void Run([TimerTrigger("*/20 * * * * *")] TimerInfo myTimer)
-        public void Run([TimerTrigger("*/20 * * * * *")] TimerInfo myTimer)
+        public void Run([TimerTrigger("0 */1 * * * *")] TimerInfo myTimer)
         {
             logger.LogInformation("Starting Session Processing instances");
 

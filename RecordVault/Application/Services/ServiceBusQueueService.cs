@@ -55,6 +55,22 @@ namespace RecordVault.Application.Services
             await queuePersistence.CloseMessageReceiverAsync(receiver);
         }
 
+        public IQueueSessionLockManager StartSessionLockRenewal<T>(T receiver)
+        {
+            if (receiver is not ServiceBusSessionReceiver) throw new ArgumentException("Receiver is not a ServiceBusSessionReceiver");
+            var messageReceiver = receiver as ServiceBusSessionReceiver ?? throw new ArgumentException("Receiver cannot be null");
+
+            var lockManager = new ServiceBusSessionLockManager(messageReceiver);
+            lockManager.StartSessionLockRenewal();
+            
+            return lockManager;
+        }
+
+        public void StopSessionLockRenewal(IQueueSessionLockManager lockManager)
+        {
+            lockManager.StopSessionLockRenewal();
+        }
+
         public async Task CompleteMessageAsync<T, U>(T receiver, U message)
         {
             if (receiver is not (ServiceBusSessionReceiver or ServiceBusMessageActions)) throw new ArgumentException("Receiver is not a ServiceBusSessionReceiver or ServiceBusMessageActions");
@@ -80,12 +96,19 @@ namespace RecordVault.Application.Services
 
             var queuePersistence = queuePersistenceFactory.GetQueuePersistence("servicebus");
 
+            var maxMessageBatchSize = 250;
+
+            var messagesChecked = 0;
             var messages = new List<U>();
             var uniqueURLs = new HashSet<string>();
             while (true)
             {
+                if (messagesChecked >= maxMessageBatchSize) break; // Limit the number of messages checked to avoid long running functions
+
                 var message = await queuePersistence.ReceiveMessageAsync<ServiceBusSessionReceiver, ServiceBusReceivedMessage>(messageReceiver, TimeSpan.FromSeconds(10));
                 if (message == null) break; // No more messages
+                messagesChecked++;
+
                 string? blobUrl;
                 try
                 {
@@ -110,7 +133,9 @@ namespace RecordVault.Application.Services
                 messages.Add((U) Convert.ChangeType(message, typeof(U)));
             }
 
-            return messages;
+            var returnMessages = messages.Take(1);
+
+            return returnMessages;
         }
     }
 }
