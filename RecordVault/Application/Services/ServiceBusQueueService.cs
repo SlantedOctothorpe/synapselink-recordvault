@@ -96,7 +96,7 @@ namespace RecordVault.Application.Services
 
             var queuePersistence = queuePersistenceFactory.GetQueuePersistence("servicebus");
 
-            var maxMessageBatchSize = 250;
+            var maxMessageBatchSize = 1000;
 
             var messagesChecked = 0;
             var messages = new List<U>();

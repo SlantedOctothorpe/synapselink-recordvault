@@ -7,7 +7,7 @@
         "tryTimeout": "00:00:50",
         "delay": "00:00:30",
         "maxDelay": "00:01:00",
-        "maxRetries": 10
+        "maxRetries": 2
       },
       "maxConcurrentCalls": 4,
       "maxConcurrentSessions": 1

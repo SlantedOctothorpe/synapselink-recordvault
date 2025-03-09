@@ -81,7 +81,7 @@ namespace RecordVault.Application.Services
             return await SyncEntityCDMSchema(entitySyncPackages);
         }
 
-        public async Task SyncEntityData(IEnumerable<EntitySyncPackage> entitySyncPackages, IEnumerable<SqlCdmTable>? sqlCdmTables = null)
+        public async Task<int> SyncEntityData(IEnumerable<EntitySyncPackage> entitySyncPackages, IEnumerable<SqlCdmTable>? sqlCdmTables = null)
         {
             var tablesToSync = sqlCdmTables;
             if (tablesToSync == null)
@@ -107,6 +107,7 @@ namespace RecordVault.Application.Services
             var sqlPersistence = sqlPersistenceFactory.GetSQLPersistence();
             var sqlConnection = sqlPersistence.GetSQLConnection();
 
+            var totalRowCount = 0;
             foreach (var entitySyncPackage in entitySyncPackages)
             {
                 logger.LogInformation($"Syncing data for entity {entitySyncPackage.EntityName}");
@@ -122,19 +123,23 @@ namespace RecordVault.Application.Services
                 {
                     logger.LogInformation($"Syncing data for {entitySyncPackage.EntityName} from {fileURL}");
 
-                    await dataSyncService.SyncStorageAccountFile(fileURL);
+                    var insertRowCount = await dataSyncService.SyncStorageAccountFile(fileURL);
+
+                    totalRowCount += insertRowCount;
                 }
 
                 var mergeScript = sqlSchemaManagementService.GenerateMergeCode(entityTable, entityStagingTable);
 
                 sqlPersistence.ExecuteNonQuery(mergeScript, sqlConnection);
             }
+
+            return totalRowCount;
         }
 
-        public async Task SyncEntityData(IEnumerable<BlobCreatedEvent> blobCreatedEvents, IEnumerable<SqlCdmTable>? sqlCdmTables = null)
+        public async Task<int> SyncEntityData(IEnumerable<BlobCreatedEvent> blobCreatedEvents, IEnumerable<SqlCdmTable>? sqlCdmTables = null)
         {
             var entitySyncPackages = BlobCreatedEventsToSyncPackages(blobCreatedEvents);
-            await SyncEntityData(entitySyncPackages, sqlCdmTables);
+            return await SyncEntityData(entitySyncPackages, sqlCdmTables);
         }
     }
 }

@@ -96,10 +96,10 @@ namespace RecordVault.Functions
                     stopwatch = Stopwatch.StartNew();
 
                     // Sync the data
-                    await entitySyncService.SyncEntityData(syncPackages, sqlCdmTables);
+                    var rowCountSynced = await entitySyncService.SyncEntityData(syncPackages, sqlCdmTables);
 
                     stopwatch.Stop();
-                    LogInformationWithGuid(processorGuid, $"Data sync took {stopwatch.ElapsedMilliseconds}ms");
+                    LogInformationWithGuid(processorGuid, $"Data sync took {stopwatch.ElapsedMilliseconds}ms for {rowCountSynced} rows");
 
                     var entityCount = syncPackages.Count();
                     LogInformationWithGuid(processorGuid, $"Successfully synced {entityCount} entit(y)(ies)");

@@ -71,6 +71,20 @@ namespace RecordVault.Infrastructure.Persistence
             return tableSchema;
         }
 
+        public int GetRowCount(string tableName, IDbConnection connection)
+        {
+            var sqlConnection = (SqlConnection)connection;
+            var command = sqlConnection.CreateCommand();
+            command.CommandText = $"SELECT COUNT(*) FROM {tableName} WITH (NOLOCK)";
+            command.CommandType = CommandType.Text;
+
+            sqlConnection.Open();
+            var count = (int)(command.ExecuteScalar() ?? 0);
+            sqlConnection.Close();
+
+            return count;
+        }
+
         public void ExecuteNonQuery(string query, IDbConnection connection)
         {
             var sqlConnection = (SqlConnection)connection;

@@ -17,8 +17,8 @@ namespace RecordVault.Domain.Services
 
         public Task<IEnumerable<SqlCdmTable>> SyncEntityCDMSchema(IEnumerable<BlobCreatedEvent> blobCreatedEvents);
 
-        public Task SyncEntityData(IEnumerable<EntitySyncPackage> entitySyncPackages, IEnumerable<SqlCdmTable>? sqlCdmTables = null);
+        public Task<int> SyncEntityData(IEnumerable<EntitySyncPackage> entitySyncPackages, IEnumerable<SqlCdmTable>? sqlCdmTables = null);
 
-        public Task SyncEntityData(IEnumerable<BlobCreatedEvent> blobCreatedEvents, IEnumerable<SqlCdmTable>? sqlCdmTables = null);
+        public Task<int> SyncEntityData(IEnumerable<BlobCreatedEvent> blobCreatedEvents, IEnumerable<SqlCdmTable>? sqlCdmTables = null);
     }
 }

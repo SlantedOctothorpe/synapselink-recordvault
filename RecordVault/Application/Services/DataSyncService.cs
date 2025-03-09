@@ -27,7 +27,7 @@ namespace RecordVault.Application.Services
             _fileProcessingService = fileProcessingService;
         }
 
-        public async Task SyncStorageAccountFile(string fileURL)
+        public async Task<int> SyncStorageAccountFile(string fileURL)
         {
             var storageURL = new AzureStorageURL(fileURL);
 
@@ -44,7 +44,9 @@ namespace RecordVault.Application.Services
 
             var fileType = DetermineFileType(fileURL);
 
-            await _fileProcessingService.ProcessFileToSQL(stream, fileType, stagingTableName, sqlConnectionString, sqlType);
+            var rowCount = await _fileProcessingService.ProcessFileToSQL(stream, fileType, stagingTableName, sqlConnectionString, sqlType);
+
+            return rowCount;
 
             // loop here?
 
