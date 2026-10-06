@@ -1,5 +1,4 @@
 ﻿using Azure.Identity;
-
 using RecordVault.Domain.Persistence;
 
 namespace RecordVault.Infrastructure.Persistence
@@ -27,7 +26,15 @@ namespace RecordVault.Infrastructure.Persistence
 
             var token = await credential.GetTokenAsync(new Azure.Core.TokenRequestContext(new string[] { _scope }, tenantId: _tenantId));
 
-            return token.Token;
+            var outputToken = token.Token;
+
+            // ADLS Gen2 requires the token to be prefixed with "Bearer "
+            if (!outputToken.StartsWith("Bearer "))
+            {
+                outputToken = $"Bearer {outputToken}";
+            }
+
+            return outputToken;
         }
     }
 }

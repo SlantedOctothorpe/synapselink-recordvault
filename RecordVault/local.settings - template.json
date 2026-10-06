@@ -5,13 +5,20 @@
     "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated",
 
     "AzureTenantId": "",
+    "AzureStorageAccountAuthMethod": "ManagedIdentity",
     "AzureStorageAccountName": "",
     "AzureStorageAccountAccessKey": "",
     "CDMManifestURL": "",
     "AzureStorageBusConnectionString": "",
+    "AzureStorageBusPreSessionConnectionString": "",
+    "AzureStorageBusPreSessionQueueName": "",
+    "AzureStorageBusSessionAwareQueueName": "",
+    "AzureStorageBusTriggerProcessQueueName": "",
 
     "RecodVaultDBType": "SQLServer",
     "RecordVaultDBConnectionString": "",
-    "RecordVaultDBStagingTablePrefix": "sysStaging_"
+    "RecordVaultDBStagingTablePrefix": "sysStaging_",
+
+    "ProcessBlobCreatedInstances": "1"
   }
 }

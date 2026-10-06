@@ -2,6 +2,6 @@
 {
     public interface IDataSyncService
     {
-        public Task SyncStorageAccountFile(string fileURL);
+        public Task<int> SyncStorageAccountFile(string fileURL);
     }
 }

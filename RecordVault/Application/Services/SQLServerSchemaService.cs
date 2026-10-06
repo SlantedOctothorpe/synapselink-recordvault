@@ -364,7 +364,7 @@ namespace RecordVault.Application.Services
                 return "";
             }
 
-            var matchedConditionColumnsScript = $"{targetAlias}.{versionColumn} <> {sourceAlias}.{versionColumn} OR {targetAlias}.{modifiedDateColumn} <> {sourceAlias}.{modifiedDateColumn}";
+            var matchedConditionColumnsScript = $"{targetAlias}.{versionColumn} < {sourceAlias}.{versionColumn} OR {targetAlias}.{modifiedDateColumn} < {sourceAlias}.{modifiedDateColumn}";
             //var matchedConditionColumnsScript = string.Join(" OR ", columns.Select(c => $"{targetAlias}.{c.ColumnName} <> {sourceAlias}.{c.ColumnName}"));
 
             return matchedConditionColumnsScript;

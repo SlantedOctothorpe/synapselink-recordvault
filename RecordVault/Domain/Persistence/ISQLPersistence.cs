@@ -22,6 +22,8 @@ namespace RecordVault.Domain.Persistence
 
         IEnumerable<DbColumn> GetSQLColumnSchema(string tableName, IDbConnection connection);
 
+        int GetRowCount(string tableName, IDbConnection connection);
+
         void ExecuteNonQuery(string query, IDbConnection connection);
 
         void TruncateTable(string tableName, IDbConnection connection);

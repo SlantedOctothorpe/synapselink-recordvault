@@ -30,7 +30,7 @@ public class FileProcessor : IFileProcessingService
         _fileReaderFactory = fileReaderFactory;
     }
 
-    public async Task ProcessFileToSQL(Stream fileStream, string fileType, string tableName, string connectionString, string sqlType)
+    public async Task<int> ProcessFileToSQL(Stream fileStream, string fileType, string tableName, string connectionString, string sqlType)
     {
         var sqlPersistence = _sqlPersistenceFactory.GetSQLPersistence(sqlType);
         var sqlConnection = sqlPersistence.GetSQLConnection(connectionString);
@@ -40,6 +40,10 @@ public class FileProcessor : IFileProcessingService
         var dataReader = await fileReader.ReadAsync(fileStream, sqlTableSchema);
 
         await ProcessDataReaderToSQL(dataReader, tableName, sqlConnection, sqlPersistence);
+
+        var rowCount = sqlPersistence.GetRowCount(tableName, sqlConnection);
+
+        return rowCount;
     }
 
     private async Task ProcessDataReaderToSQL(IDataReader dataReader, string tableName, IDbConnection sqlConnection, ISQLPersistence sqlPersistence)

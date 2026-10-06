@@ -24,7 +24,7 @@ namespace RecordVault.Application.Factories
 
             if (string.IsNullOrEmpty(sqlTypeStr))
             {
-                throw new ArgumentNullException("SQL Type not provided");
+                throw new ArgumentNullException(nameof(sqlTypeParam));
             }
 
             var sqlType = Enum.TryParse<SQLImplementationEnum>(sqlTypeStr, out var sqlTypeResult) ? sqlTypeResult : SQLImplementationEnum.SQLServer;
